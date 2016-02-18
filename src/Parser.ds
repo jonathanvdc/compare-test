@@ -1,0 +1,73 @@
+using System;
+using System.Collections.Generic;
+
+namespace CompareTest
+{
+    /// <summary>
+    /// A compare-test testing file parser.
+    /// </summary>
+    public class Parser
+    {
+        public const this(set Flame.Compiler.ICompilerLog Log);
+
+        /// <summary>
+        /// Gets the compiler log that is associated with this parser.
+        /// </summary>
+        public Flame.Compiler.ICompilerLog Log { get; private set; }
+
+        /// <summary>
+        /// Parses an expression, which may consist of more than one expression.
+        /// </summary>
+        public IExpression ParseExpression(TokenBuffer Buffer)
+        {
+            IExpression result = EmptyExpression;
+            while (!TokenHelpers.TerminatesStructure(Buffer.PeekToken().Type))
+            {
+                result = new ConcatExpression(result, ParsePrimitiveExpression(Buffer));
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Parses a primitive expression.
+        /// </summary>
+        public IExpression ParsePrimitiveExpression(TokenBuffer Buffer)
+        {
+            var peek = Buffer.PeekToken();
+            if (peek.Type == TokenType.Dollar)
+            {
+                return ParseVariableExpression(Buffer);
+            }
+            else if (peek.Type == TokenType.At)
+            {
+                return ParseCommandExpression(Buffer);
+            }
+            else
+            {
+                return new TokenExpression(Buffer.ReadToken());
+            }
+        }
+
+        /// <summary>
+        /// Parses a get-variable expression.
+        /// </summary>
+        public VariableExpression ParseVariableExpression(TokenBuffer Buffer)
+        {
+            Buffer.ExpectNontrivialToken(TokenType.Dollar, Log);
+            var ident = Buffer.ExpectNontrivialToken(TokenType.Identifier, Log);
+            return new VariableExpression(ident);
+        }
+
+        /// <summary>
+        /// Parses a command-expression.
+        /// </summary>
+        public CommandExpression ParseCommandExpression(TokenBuffer Buffer)
+        {
+            Buffer.ExpectNontrivialToken(TokenType.At, Log);
+            Buffer.ExpectNontrivialToken(TokenType.LParen, Log);
+            var innerExpr = ParseExpression(Buffer);
+            Buffer.ExpectNontrivialToken(TokenType.RParen, Log);
+            return new CommandExpression(innerExpr);
+        }
+    }
+}
