@@ -72,6 +72,8 @@ namespace CompareTest
         // '{'
         LBrace = 9,
         // '}'
-        RBrace = 10
+        RBrace = 10,
+        // ';'
+        Semicolon = 11
     }
 }

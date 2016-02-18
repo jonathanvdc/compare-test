@@ -21,6 +21,7 @@ namespace CompareTest
             this.singleCharTokens["="] = TokenType.Equals;
             this.singleCharTokens["{"] = TokenType.LBrace;
             this.singleCharTokens["}"] = TokenType.RBrace;
+            this.singleCharTokens[";"] = TokenType.Semicolon;
         }
 
         /// <summary>
@@ -65,6 +66,15 @@ namespace CompareTest
             return IsIdentifierHeadChar(Value)
                 || char.IsDigit(Value)
                 || Value == '-';
+        }
+
+        /// <summary>
+        /// Gets a boolean value that tells whether the given
+        /// token type is a trivial token type.
+        /// </summary>
+        public static bool IsTrivia(TokenType Type)
+        {
+            return Type == TokenType.Comment || Type == TokenType.Whitespace;
         }
 
         /// <summary>

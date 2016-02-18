@@ -23,4 +23,5 @@
     <Compile Include="SyntaxException.ds" />
     <Compile Include="TestManager.ds" />
     <Compile Include="Token.ds" />
+    <Compile Include="TokenBuffer.ds" />
 </Project>

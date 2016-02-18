@@ -1,0 +1,164 @@
+using System;
+using System.Collections.Generic;
+using Flame.Compiler;
+using Pixie;
+
+namespace CompareTest
+{
+    /// <summary>
+    /// A space-efficient lookahead buffer for a lexer.
+    /// </summary>
+    public class TokenBuffer
+    {
+        /// <summary>
+        /// Creates a token buffer from the given lexer.
+        /// </summary>
+        public const this(set Lexer Tokenizer)
+        {
+            this.cachedTokens = new LinkedList<Token>();
+        }
+
+        /// <summary>
+        /// Gets this token buffer's underlying tokenizer.
+        /// </summary>
+        public Lexer Tokenizer { get; private set; }
+
+        // The list of cached tokens.
+        private LinkedList<Token> cachedTokens;
+
+        /// <summary>
+        /// Reads a single token from the lexer, and adds it to the
+        /// cached tokens buffer.
+        /// </summary>
+        private void BufferToken()
+        {
+            cachedTokens.AddLast(Tokenizer.ReadToken());
+        }
+
+        /// <summary>
+        /// Ensures that at least the given number of tokens have
+        /// been buffered.
+        /// </summary>
+        private void EnsureBuffered(int Count)
+        {
+            while (cachedTokens.Count < Count)
+                BufferToken();
+        }
+
+        /// <summary>
+        /// Peeks a token from the token buffer.
+        /// </summary>
+        public Token PeekToken(int Lookahead)
+            in { Lookahead >= 0 }
+        {
+            EnsureBuffered(Lookahead + 1);
+            int i = 0;
+            foreach (var peek in cachedTokens)
+            {
+                if (i == Lookahead)
+                    return peek;
+                i++;
+            }
+            throw new Exception("Unreachable code.");
+        }
+
+        /// <summary>
+        /// Peeks a token from the token buffer.
+        /// </summary>
+        public Token PeekToken()
+        {
+            return PeekToken(0);
+        }
+
+        /// <summary>
+        /// Peeks a nontrivial token from the token buffer.
+        /// </summary>
+        public Token PeekNontrivialToken(int Lookahead)
+            in { Lookahead >= 0 }
+        {
+            Token peek = null;
+            int nontriviaCounter = -1;
+            var node = cachedTokens.First;
+            while (true)
+            {
+                if (!Lexer.IsTrivia(peek.Type))
+                    nontriviaCounter++;
+
+                if (nontriviaCounter == Lookahead)
+                    return peek;
+
+                node = node.Next;
+
+                if (node == null)
+                {
+                    // Quickly buffer another token if we run out of buffered
+                    // tokens.
+                    BufferToken();
+                    node = cachedTokens.Last;
+                }
+            }
+            throw new Exception("Unreachable code.");
+        }
+
+        /// <summary>
+        /// Logically reads a single token from the token buffer.
+        /// </summary>
+        public Token ReadToken()
+        {
+            EnsureBuffered(1);
+            var result = cachedTokens.First.Value;
+            cachedTokens.RemoveFirst();
+            return result;
+        }
+
+        /// <summary>
+        /// Reads a nontrivial token from the token buffer. If there are no
+        /// more nontrivial tokens to read, then an end-of-file token is returned.
+        /// </summary>
+        public Token ReadNontrivialToken()
+        {
+            var tok = ReadToken();
+            if (!Lexer.IsTrivia(tok.Type))
+                return tok; // We found a nontrivial token.
+            else
+                return ReadNontrivialToken(); // Try again.
+        }
+
+        /// <summary>
+        /// Logs an error message that explains that the given token
+        /// was unexpected.
+        /// </summary>
+        private void LogUnexpected(ICompilerLog Log, TokenType Expected, Token Found)
+        {
+            var nodes = new List<MarkupNode>();
+            nodes.Add(new MarkupNode(NodeConstants.TextNodeType, "expected token of type '"));
+            nodes.Add(new MarkupNode(NodeConstants.BrightNodeType, Expected.ToString()));
+            nodes.Add(new MarkupNode(NodeConstants.TextNodeType, "', got '"));
+            nodes.Add(new MarkupNode(NodeConstants.BrightNodeType, Found.Contents));
+            nodes.Add(new MarkupNode(NodeConstants.TextNodeType, "'."));
+
+            Log.LogError(new LogEntry(
+                "unexpected token", new MarkupNode("entry", nodes),
+                Found.Location));
+        }
+
+        /// <summary>
+        /// Reads a token from the token buffer, and expect it to be of
+        /// the given type. If not, then an empty token of the specified type is
+        /// created, and an error is logged to the given log.
+        /// </summary>
+        public Token ExpectToken(TokenType Type, ICompilerLog Log)
+        {
+            var tok = PeekToken();
+            if (tok.Type == Type)
+            {
+                return ReadToken();
+            }
+            else
+            {
+                LogUnexpected(Log, Type, tok);
+                return new Token("", Type, tok.Document, tok.Offset);
+            }
+        }
+    }
+}
