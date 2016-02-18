@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Name="compare-test" >
+    <Setter Property="TargetPlatform" Value="clr" />
+    <Setter Property="AssemblyName" Value="compare-test" />
+    <ItemGroup>
+        <RuntimeLibrary Include="PortableRT" />
+        <RuntimeLibrary Include="System" />
+        <RuntimeLibrary Include="System.Core" />
+    </ItemGroup>
+    <ItemGroup>
+        <Reference Include="../libs/Pixie.dll" />
+        <Reference Include="../libs/Flame.dll" />
+        <Reference Include="../libs/Flame.Compiler.dll" />
+        <Reference Include="../libs/Flame.Front.dll" />
+        <Reference Include="../libs/Flame.Recompilation.dll" />
+    </ItemGroup>
+    <Compile Include="Ast.ds" />
+    <Compile Include="Configuration.ds" />
+    <Compile Include="ExecutionState.ds" />
+    <Compile Include="Lexer.ds" />
+    <Compile Include="Program.ds" />
+    <Compile Include="Section.ds" />
+    <Compile Include="SyntaxException.ds" />
+    <Compile Include="TestManager.ds" />
+    <Compile Include="Token.ds" />
+</Project>
