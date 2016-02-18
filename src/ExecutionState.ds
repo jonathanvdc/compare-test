@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Text;
 using Flame.Compiler;
+using Pixie;
 
 namespace CompareTest
 {
@@ -74,19 +75,23 @@ namespace CompareTest
 
             string output = process.StandardOutput.ReadToEnd();
 
-            // for debugging purposes
-            Console.WriteLine("Standard output from '" + Name + " " + Arguments + "':");
-            Console.WriteLine(output);
-
-            string err = process.StandardError.ReadToEnd();
-            if (!string.IsNullOrWhiteSpace(err))
-            {
-                Console.WriteLine("Standard error from '" + Name + " " + Arguments + "':");
-                Console.WriteLine(err);
-            }
-
             process.WaitForExit();
             this.ExitCode = process.ExitCode;
+
+            // Write output to console no matter what.
+            Console.Write(output);
+
+            if (HasErrored)
+            {                
+                // Write output to log for debugging purposes.
+                string err = process.StandardError.ReadToEnd();
+                if (!string.IsNullOrWhiteSpace(err))
+                {
+                    var node = new MarkupNode(NodeConstants.ParagraphNodeType, err);
+                    Log.LogMessage(new LogEntry("standard error", node));
+                }
+            }
+
             return output;
         }
 
