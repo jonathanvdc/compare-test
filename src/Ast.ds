@@ -177,15 +177,15 @@ namespace CompareTest
     /// <summary>
     /// A statement that assigns a value to some variable.
     /// </summary>
-    public class SetVariableStatement : IStatement
+    public class AssignmentStatement : IStatement
     {
-        public const this(set string Identifier, set IExpression Value);
+        public const this(set Token Identifier, set IExpression Value);
 
         /// <summary>
         /// Gets the name of the variable to set, i.e. the left-hand side
         /// of the expression.
         /// </summary>
-        public string Identifier { get; private set; }
+        public Token Identifier { get; private set; }
 
         /// <summary>
         /// Gets the expression whose value will be assigned to the variable,
@@ -196,12 +196,12 @@ namespace CompareTest
         public Configuration Execute(Configuration Config, ExecutionState State)
         {
             string evalValue = Value.Evaluate(Config, State);
-            return Config.WithVariable(Identifier, evalValue);
+            return Config.WithVariable(Identifier.Contents, evalValue);
         }
 
         public override string ToString()
         {
-            return Identifier + " = " + Value.ToString() + ";";
+            return Identifier.Contents + " = " + Value.ToString() + ";";
         }
     }
 

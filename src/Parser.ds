@@ -42,6 +42,12 @@ namespace CompareTest
             {
                 return ParseCommandExpression(Buffer);
             }
+            else if (peek.Type == TokenType.Comment)
+            {
+                // Eat the comment, and proceed.
+                Buffer.ExpectToken(TokenType.Comment, Log);
+                return ParsePrimitiveExpression(Buffer);
+            }
             else
             {
                 return new TokenExpression(Buffer.ReadToken());
@@ -68,6 +74,50 @@ namespace CompareTest
             var innerExpr = ParseExpression(Buffer);
             Buffer.ExpectNontrivialToken(TokenType.RParen, Log);
             return new CommandExpression(innerExpr);
+        }
+
+        /// <summary>
+        /// Parses an statement from the given token buffer.
+        /// </summary>
+        public IStatement ParseStatement(TokenBuffer Buffer)
+        {
+            var peek = Buffer.PeekNontrivialToken();
+            if (peek.Type == TokenType.Identifier &&
+                Buffer.PeekNontrivialToken(1).Type == TokenType.Equals)
+            {
+                return ParseAssignmentStatement(Buffer);
+            }
+            else if (peek.Type == TokenType.Semicolon)
+            {
+                Buffer.ExpectNontrivialToken(TokenType.Semicolon, Log);
+                return EmptyStatement;
+            }
+            else
+            {
+                return ParseCommandStatement(Buffer);
+            }
+        }
+
+        /// <summary>
+        /// Parses an assignment statement from the given token buffer.
+        /// </summary>
+        public AssignmentStatement ParseAssignmentStatement(TokenBuffer Buffer)
+        {
+            var ident = Buffer.ExpectNontrivialToken(TokenType.Identifier, Log);
+            Buffer.ExpectNontrivialToken(TokenType.Equals, Log);
+            var expr = ParseExpression(Buffer);
+            Buffer.ExpectNontrivialToken(TokenType.Semicolon, Log);
+            return new AssignmentStatement(ident, expr);
+        }
+
+        /// <summary>
+        /// Parses a command statement from the given token buffer.
+        /// </summary>
+        public CommandStatement ParseCommandStatement(TokenBuffer Buffer)
+        {
+            var expr = ParseExpression(Buffer);
+            Buffer.ExpectNontrivialToken(TokenType.Semicolon, Log);
+            return new CommandStatement(expr);
         }
     }
 }

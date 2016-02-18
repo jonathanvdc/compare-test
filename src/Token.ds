@@ -43,6 +43,11 @@ namespace CompareTest
                 return new SourceLocation(Document, Offset, Contents.Length);
             }
         }
+
+        public override string ToString()
+        {
+            return "{ '" + TokenHelpers.NameTokenType(Type) + "', '" + Contents + "' }";
+        }
     }
 
     /// <summary>
