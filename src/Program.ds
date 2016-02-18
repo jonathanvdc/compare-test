@@ -1,0 +1,30 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+
+namespace CompareTest
+{
+    public static class Program
+    {
+        public void Main(string[] Args)
+        {
+            var sections = new Dictionary<string, Section>();
+            var buildLines = new List<IStatement>();
+            buildLines.Add(new CommandStatement(new ConcatExpression(new ReplacementExpression("dsc"), new VerbatimExpression(" --version"))));
+            sections["run"] = new Section("run", buildLines, new Dictionary<string, Section>());
+            var root = new Section("", new List<IStatement>(), sections);
+            // Console.WriteLine(root.ToString());
+
+            var configOptions = new Dictionary<string, string>();
+            configOptions["platform"] = "linux";
+            configOptions["net-runtime"] = "mono";
+            configOptions["dsc"] = "dsc";
+            configOptions[TestManager.WorkingDirectoryKey] = Environment.CurrentDirectory;
+            var config = new Configuration("default", configOptions);
+            // Console.WriteLine(config.ToString());
+
+            var manager = new TestManager(config);
+            manager.RunTest(root);
+        }
+    }
+}

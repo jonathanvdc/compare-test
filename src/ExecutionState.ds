@@ -1,0 +1,100 @@
+using System;
+using System.Diagnostics;
+using System.Text;
+
+namespace CompareTest
+{
+    /// <summary>
+    /// A mutable state structure that can be used by statements to start
+    /// processes and check for errors.
+    /// </summary>
+    public class ExecutionState
+    {
+        public const this(set string WorkingDirectory, set int ExitCode);
+
+        public const this(set string WorkingDirectory)
+        {
+            this.ExitCode = 0;
+        }
+
+        /// <summary>
+        /// Gets this state object's working directory.
+        /// </summary>
+        public string WorkingDirectory { get; private set; }
+
+        /// <summary>
+        /// Gets or sets the last exit code. Any nonzero exit code
+        /// points to an error.
+        /// </summary>
+        public int ExitCode { get; set; }
+
+        /// <summary>
+        /// Gets a boolean value that tells whether this state is in an
+        /// error state. This is dependent on the last exit code.
+        /// A state that is in error cannot be instructed to
+        /// execute further processes.
+        /// </summary>
+        public bool HasErrored { get { return ExitCode != 0; } }
+
+        /// <summary>
+        /// Creates a new execution state from this execution state.
+        /// </summary>
+        public ExecutionState Fork()
+        {
+            return new ExecutionState(WorkingDirectory, ExitCode);
+        }
+
+        /// <summary>
+        /// Runs a process with the given name and arguments, waits for
+        /// completion, and then returns its output.
+        /// </summary>
+        public string RunProcess(string Name, string Arguments)
+        {
+            if (HasErrored)
+                throw new InvalidOperationException(
+                    "Cannot start a process if a previously executed " +
+                    "process did not terminate successfully.");
+
+            var process = new Process();
+            process.StartInfo.FileName = Name;
+            process.StartInfo.Arguments = Arguments;
+            process.StartInfo.UseShellExecute = false;
+            process.StartInfo.RedirectStandardOutput = true;
+            process.StartInfo.RedirectStandardError = true;
+            process.StartInfo.WorkingDirectory = WorkingDirectory;
+            process.Start();
+
+            string output = process.StandardOutput.ReadToEnd();
+
+            // for debugging purposes
+            Console.WriteLine("Standard output from '" + Name + " " + Arguments + "':");
+            Console.WriteLine(output);
+
+            string err = process.StandardError.ReadToEnd();
+            if (!string.IsNullOrWhiteSpace(err))
+            {
+                Console.WriteLine("Standard error from '" + Name + " " + Arguments + "':");
+                Console.WriteLine(err);
+            }
+
+            process.WaitForExit();
+            this.ExitCode = process.ExitCode;
+            return output;
+        }
+
+        /// <summary>
+        /// Runs a process from the given command, waits for
+        /// completion, and then returns its output.
+        /// </summary>
+        public string RunProcess(string Command)
+        {
+            int firstSpace = Command.IndexOf(' ');
+            if (firstSpace < 0)
+                return RunProcess(Command, "");
+            else
+                return RunProcess(
+                    Command.Substring(0, firstSpace),
+                    Command.Substring(firstSpace + 1));
+        }
+    }
+}

@@ -1,0 +1,253 @@
+using System;
+using System.Collections.Generic;
+using System.Text;
+
+namespace CompareTest
+{
+    /// <summary>
+    /// A test "expression," which can be evaluated for a given configuration.
+    /// </summary>
+    public interface IExpression
+    {
+        /// <summary>
+        /// Evaluates this test expression for the given configuration.
+        /// </summary>
+        string Evaluate(Configuration Config, ExecutionState State);
+    }
+
+    /// <summary>
+    /// A test "statement," which can change the configuration, or execute
+    /// arbitrary programs.
+    /// </summary>
+    public interface IStatement
+    {
+        /// <summary>
+        /// Executes this statement. A new configuration is returned, which
+        /// may or may not be the old configuration.
+        /// </summary>
+        Configuration Execute(Configuration Config, ExecutionState State);
+    }
+
+    public class VerbatimExpression : IExpression
+    {
+        public const this(set string Contents);
+
+        public string Contents { get; private set; }
+
+        /// <summary>
+        /// Evaluates this test expression for the given configuration.
+        /// </summary>
+        public string Evaluate(Configuration Config, ExecutionState State)
+        {
+            return Contents;
+        }
+
+        public override string ToString()
+        {
+            return Contents;
+        }
+    }
+
+    public class ReplacementExpression : IExpression
+    {
+        public const this(set string Key);
+
+        public string Key { get; private set; }
+
+        /// <summary>
+        /// Evaluates this test expression for the given configuration.
+        /// </summary>
+        public string Evaluate(Configuration Config, ExecutionState State)
+        {
+            return Config.Variables[Key];
+        }
+
+        public override string ToString()
+        {
+            return "$(" + Key + ")";
+        }
+    }
+
+    /// <summary>
+    /// An expression that evaluates an expression, and executes the result
+    /// as a command.
+    /// </summary>
+    public class CommandExpression : IExpression
+    {
+        public const this(set IExpression Command);
+
+        /// <summary>
+        /// Gets the expression that describes the command this
+        /// statement should execute.
+        /// </summary>
+        public IExpression Command { get; private set; }
+
+        public string Evaluate(Configuration Config, ExecutionState State)
+        {
+            string commandStr = Command.Evaluate(Config, State);
+            if (!State.HasErrored)
+                return State.RunProcess(commandStr);
+            else
+                return "";
+        }
+
+        public override string ToString()
+        {
+            return "@(" + Command.ToString() + ")";
+        }
+    }
+
+    public class ConcatExpression : IExpression
+    {
+        public const this(set IExpression Left, set IExpression Right);
+
+        public IExpression Left { get; private set; }
+        public IExpression Right { get; private set; }
+
+        /// <summary>
+        /// Evaluates this test expression for the given configuration.
+        /// </summary>
+        public string Evaluate(Configuration Config, ExecutionState State)
+        {
+            return Left.Evaluate(Config, State) + Right.Evaluate(Config, State);
+        }
+
+        public override string ToString()
+        {
+            return Left.ToString() + Right.ToString();
+        }
+    }
+
+    /// <summary>
+    /// A test expression that evaluates to the empty string.
+    /// </summary>
+    public static class EmptyExpression : IExpression
+    {
+        public string Evaluate(Configuration Config, ExecutionState State)
+        {
+            return "";
+        }
+
+        public override string ToString()
+        {
+            return "";
+        }
+    }
+
+    /// <summary>
+    /// A statement that evaluates an expression, and executes the result
+    /// as a command.
+    /// </summary>
+    public class CommandStatement : IStatement
+    {
+        public const this(set IExpression Command);
+
+        /// <summary>
+        /// Gets the expression that describes the command this
+        /// statement should execute.
+        /// </summary>
+        public IExpression Command { get; private set; }
+
+        public Configuration Execute(Configuration Config, ExecutionState State)
+        {
+            string commandStr = Command.Evaluate(Config, State);
+            if (!State.HasErrored)
+                State.RunProcess(commandStr);
+            return Config;
+        }
+
+        public override string ToString()
+        {
+            return Command.ToString() + ";";
+        }
+    }
+
+    /// <summary>
+    /// A statement that assigns a value to some variable.
+    /// </summary>
+    public class SetVariableStatement : IStatement
+    {
+        public const this(set string Identifier, set IExpression Value);
+
+        /// <summary>
+        /// Gets the name of the variable to set, i.e. the left-hand side
+        /// of the expression.
+        /// </summary>
+        public string Identifier { get; private set; }
+
+        /// <summary>
+        /// Gets the expression whose value will be assigned to the variable,
+        /// i.e. the right-hand side of the expression.
+        /// </summary>
+        public IExpression Value { get; private set; }
+
+        public Configuration Execute(Configuration Config, ExecutionState State)
+        {
+            string evalValue = Value.Evaluate(Config, State);
+            return Config.WithVariable(Identifier, evalValue);
+        }
+
+        public override string ToString()
+        {
+            return Identifier + " = " + Value.ToString() + ";";
+        }
+    }
+
+    /// <summary>
+    /// A statement that executes two child statements in sequence.
+    /// </summary>
+    public class SequenceStatement : IStatement
+    {
+        public const this(set IStatement First, set IStatement Second);
+
+        /// <summary>
+        /// Gets the first statement to execute.
+        /// </summary>
+        public IStatement First { get; private set; }
+
+        /// <summary>
+        /// Gets the second statement to execute.
+        /// </summary>
+        public IStatement Second { get; private set; }
+
+        public Configuration Execute(Configuration Config, ExecutionState State)
+        {
+            var newConfig = First.Execute(Config, State);
+            return Second.Execute(newConfig, State);
+        }
+
+        public override string ToString()
+        {
+            var sb = new StringBuilder();
+            string firstStr = First.ToString();
+            if (!string.IsNullOrWhiteSpace(firstStr))
+            {
+                sb.Append(firstStr);
+            }
+            string secondStr = Second.ToString();
+            if (!string.IsNullOrWhiteSpace(secondStr))
+            {
+                if (sb.Length > 0)
+                    sb.AppendLine();
+                sb.Append(secondStr);
+            }
+            return sb.ToString();
+        }
+    }
+
+    /// <summary>
+    /// A test statement that does nothing.
+    /// </summary>
+    public static class EmptyStatement : IStatement
+    {
+        public Configuration Execute(Configuration Config, ExecutionState State)
+        {
+            return Config;
+        }
+
+        public override string ToString()
+        {
+            return ";";
+        }
+    }
+}

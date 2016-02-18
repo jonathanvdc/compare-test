@@ -1,0 +1,106 @@
+using System;
+using System.Collections.Generic;
+using System.Text;
+
+namespace CompareTest
+{
+    /// <summary>
+    /// A section in a test file. This can also be the root section, i.e.
+    /// the test file itself.
+    /// </summary>
+    public class Section
+    {
+        public const this(
+            set string Name,
+            set IReadOnlyList<IStatement> Statements,
+            set IReadOnlyDictionary<string, Section> Sections);
+
+        /// <summary>
+        /// Gets this section's name.
+        /// </summary>
+        public string Name { get; private set; }
+
+        /// <summary>
+        /// Gets the sequence of top-level statements in this file section.
+        /// </summary>
+        public IReadOnlyList<IStatement> Statements { get; private set; }
+
+        /// <summary>
+        /// Gets this section's subsections.
+        /// </summary>
+        public IReadOnlyDictionary<string, Section> Sections { get; private set; }
+
+        /// <summary>
+        /// Checks that this is a leaf section, i.e. it has no subsections.
+        /// </summary>
+        public bool IsLeaf { get { return Sections.Count == 0; } }
+
+        /// <summary>
+        /// Gets this section as a single top-level statement.
+        /// </summary>
+        public IStatement AsStatement()
+        {
+            IStatement result = EmptyStatement;
+            foreach (var item in Statements)
+                result = new SequenceStatement(result, item);
+            return result;
+        }
+
+        /// <summary>
+        /// Gets an optional statement subsection in this section.
+        /// The empty statement is returned if the specified section is absent. 
+        /// </summary>
+        public IStatement GetOptionalStatementSection(string Name)
+        {
+            Section result;
+            if (Sections.TryGetValue(Name, &result))
+                return result.AsStatement();
+            else
+                return EmptyStatement;
+        }
+
+        private void AppendIndentation(StringBuilder Builder, int Nesting)
+        {
+            for (int i = 1; i < Nesting; i++)
+                Builder.Append("    ");
+        }
+
+        private void AppendLine(string Data, StringBuilder Builder, int Nesting)
+        {
+            AppendIndentation(Builder, Nesting);
+            Builder.AppendLine(Data);
+        }
+
+        private void AppendToStringBuilder(StringBuilder Builder, int Nesting)
+        {
+            bool isRoot = Nesting == 0;
+            if (!isRoot)
+            {
+                AppendLine(Name, Builder, Nesting);
+                AppendLine("{", Builder, Nesting);
+            }
+            foreach (var line in Statements)
+            {
+                AppendLine(line.ToString(), Builder, Nesting + 1);
+            }
+            foreach (var pair in Sections)
+            {
+                pair.Value.AppendToStringBuilder(Builder, Nesting + 1);
+            }
+            if (!isRoot)
+            {
+                AppendLine("}", Builder, Nesting);
+            }
+        }
+
+        public override string ToString()
+        {
+            var sb = new StringBuilder();
+            if (string.IsNullOrWhiteSpace(Name))
+                AppendToStringBuilder(sb, 0);
+            else
+                AppendToStringBuilder(sb, 1);
+            return sb.ToString();
+        }
+    }
+}

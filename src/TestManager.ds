@@ -1,0 +1,88 @@
+using System;
+using System.Collections.Generic;
+
+namespace CompareTest
+{
+    /// <summary>
+    /// A class of objects that take care of running tests.
+    /// </summary>
+    public class TestManager
+    {
+        public const string BuildSectionName = "build";
+        public const string RunSectionName = "run";
+        public const string ConfigurationsSectionName = "configs";
+        public const string DefaultsSectionName = "defaults";
+        public const string WorkingDirectoryKey = "working-directory";
+
+        public const this(set Configuration DefaultConfiguration);
+
+        /// <summary>
+        /// Gets this test manager's default configuration.
+        /// </summary>
+        public Configuration DefaultConfiguration { get; private set; }
+
+        /// <summary>
+        /// Gets the working directory for this test manager.
+        /// </summary>
+        public string WorkingDirectory
+        {
+            get
+            {
+                return DefaultConfiguration.Variables[WorkingDirectoryKey];
+            }
+        }
+
+        /// <summary>
+        /// Extracts all configuration statements from the given root section.
+        /// </summary>
+        private IReadOnlyList<IStatement> GetConfigurations(Section Root)
+        {
+            var results = new List<IStatement>();
+            if (Root.Sections.TryGetValue(ConfigurationsSectionName, &Section configSec))
+            {
+                foreach (var sec in configSec.Sections)
+                {
+                    results.Add(sec.Value.AsStatement());
+                }
+            }
+            else
+            {
+                results.Add(EmptyStatement);
+            }
+            return results;
+        }
+
+        /// <summary>
+        /// Runs the given test. A boolean is returned that indicates
+        /// success.
+        /// </summary>
+        public bool RunTest(Section Root)
+        {
+            var state = new ExecutionState(WorkingDirectory);
+
+            // Run the 'defaults' section first.
+            var defaultStmt = Root.GetOptionalStatementSection(DefaultsSectionName);
+            var defaultConfig = defaultStmt.Execute(DefaultConfiguration, state);
+
+            var rootStmt = Root.GetOptionalStatementSection(RunSectionName);
+            var buildStmt = Root.GetOptionalStatementSection(BuildSectionName);
+
+            foreach (var configStmt in GetConfigurations(Root))
+            {
+                var configState = state.Fork();
+
+                // Configure...
+                var config = configStmt.Execute(defaultConfig, configState);
+                // ...build...
+                config = buildStmt.Execute(config, configState);
+                // ...and run!
+                rootStmt.Execute(config, configState);
+
+                if (configState.HasErrored)
+                    return false;
+            }
+
+            return true;
+        }
+    }
+}

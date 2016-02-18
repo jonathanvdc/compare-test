@@ -1,0 +1,72 @@
+using System;
+using System.Collections.Generic;
+using System.Text;
+
+namespace CompareTest
+{
+    /// <summary>
+    /// A single test configuration.
+    /// </summary>
+    public class Configuration
+    {
+        public const this(
+            set string Name, set IReadOnlyDictionary<string, string> Variables);
+
+        /// <summary>
+        /// Gets this configuration's name.
+        /// </summary>
+        public string Name { get; private set; }
+
+        /// <summary>
+        /// Gets this configuration's option dictionary.
+        /// </summary>
+        public IReadOnlyDictionary<string, string> Variables { get; private set; }
+
+        /// <summary>
+        /// Creates a sub-configuration from this configuration, the name of
+        /// the sub-configuration, and a map of extra options.
+        /// </summary>
+        public Configuration CreateSubconfiguration(
+            string NewName, IReadOnlyDictionary<string, string> SubOptions)
+        {
+            var newOptions = new Dictionary<string, string>();
+            foreach (var pair in Variables)
+                newOptions[pair.Key] = pair.Value;
+            foreach (var pair in SubOptions)
+                newOptions[pair.Key] = pair.Value;
+            return new Configuration(NewName, newOptions);
+        }
+
+        /// <summary>
+        /// Creates a new configuration based on this configuration, where the
+        /// variable with the given name is assigned the given value.
+        /// </summary>
+        public Configuration WithVariable(string Identifier, string Value)
+        {
+            var dict = new Dictionary<string, string>();
+            dict[Identifier] = Value;
+            return CreateSubconfiguration(Name, dict);
+        }
+
+        public override string ToString()
+        {
+            var sb = new StringBuilder();
+            sb.Append("config: '");
+            sb.Append(Name);
+            sb.Append("'");
+            sb.AppendLine();
+            sb.AppendLine("{");
+            foreach (var pair in Variables)
+            {
+                sb.Append("    ");
+                sb.Append(pair.Key);
+                sb.Append(" = ");
+                sb.Append(pair.Value);
+                sb.Append(';');
+                sb.AppendLine();
+            }
+            sb.Append("}");
+            return sb.ToString();
+        }
+    }
+}

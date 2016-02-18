@@ -1,0 +1,18 @@
+using System;
+
+namespace CompareTest
+{
+    /// <summary>
+    /// An exception type for syntactic errors in test files.
+    /// </summary>
+    public class SyntaxException : Exception
+    {
+        public this();
+
+        public this(string message)
+            : base(message);
+
+        public this(string message, Exception inner)
+            : base(message, inner);
+    }
+}
