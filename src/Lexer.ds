@@ -128,6 +128,8 @@ namespace CompareTest
                 return SliceWhile(TokenType.Comment, bool(char c) => c != '\n');
             else if (IsIdentifierHeadChar(PeekChar()))
                 return SliceWhile(TokenType.Identifier, IsIdentifierTailChar);
+            else if (char.IsWhiteSpace(PeekChar()))
+                return SliceWhile(TokenType.Whitespace, char.IsWhiteSpace);
 
             return SliceToken(TokenType.Unknown, 1);
         }
