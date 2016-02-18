@@ -1,0 +1,7 @@
+run
+{
+    // Print the platform, the .NET runtime, and the working directory.
+    echo $platform;
+    echo $net-runtime;
+    echo $working-directory;
+}
