@@ -82,7 +82,7 @@ namespace CompareTest
             Console.Write(output);
 
             if (HasErrored)
-            {                
+            {
                 // Write output to log for debugging purposes.
                 string err = process.StandardError.ReadToEnd();
                 if (!string.IsNullOrWhiteSpace(err))

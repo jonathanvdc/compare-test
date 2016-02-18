@@ -44,6 +44,7 @@ namespace CompareTest
 
         public Section ReadTestDescription(PathIdentifier Path, ICompilerLog Log)
         {
+            Section result = null;
             var fs = new FileStream(Path.Path, FileMode.Open, FileAccess.Read);
             try
             {
@@ -54,7 +55,7 @@ namespace CompareTest
                     var srcDoc = new SourceDocument(text, Path.Path);
                     var tokBuf = new TokenBuffer(new Lexer(srcDoc));
                     var parser = new Parser(Log);
-                    return parser.ParseRootSection(tokBuf);
+                    result = parser.ParseRootSection(tokBuf);
                 }
                 finally
                 {
@@ -65,6 +66,7 @@ namespace CompareTest
             {
                 fs.Dispose();
             }
+            return result;
         }
     }
 }

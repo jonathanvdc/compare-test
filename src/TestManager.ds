@@ -16,7 +16,7 @@ namespace CompareTest
         public const string WorkingDirectoryKey = "working-directory";
 
         public const this(
-            set Configuration DefaultConfiguration, ICompilerLog Log);
+            set Configuration DefaultConfiguration, set ICompilerLog Log);
 
         /// <summary>
         /// Gets this test manager's default configuration.
