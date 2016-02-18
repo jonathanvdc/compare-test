@@ -1,0 +1,86 @@
+using System;
+using System.Collections.Generic;
+using Flame.Compiler;
+
+namespace CompareTest
+{
+    /// <summary>
+    /// A lexer for the compare-test testing language.
+    /// </summary>
+    public class Lexer
+    {
+        public const this(set ISourceDocument Document)
+        {
+            this.Source = Document.Source;
+            this.srcPos = 0;
+            this.singleCharTokens = new Dictionary<string, TokenType>();
+            this.singleCharTokens["$"] = TokenType.Dollar;
+            this.singleCharTokens["@"] = TokenType.At;
+            this.singleCharTokens["("] = TokenType.LParen;
+            this.singleCharTokens[")"] = TokenType.RParen;
+        }
+
+        /// <summary>
+        /// Gets the lexer's source document.
+        /// </summary>
+        public ISourceDocument Document { get; private set; }
+
+        /// <summary>
+        /// Gets the source document's source code.
+        /// </summary>
+        public string Source { get; private set; }
+
+        private int srcPos;
+
+        private Dictionary<string, TokenType> singleCharTokens;
+
+        /// <summary>
+        /// Gets the current position in the source stream.
+        /// </summary>
+        public int Position { get { return srcPos; } }
+
+        /// <summary>
+        /// A boolean property that specifies if the end-of-file marker
+        /// has been reached.
+        /// </summary>
+        public bool IsEmpty { get { return srcPos >= Source.Length; } }
+
+        /// <summary>
+        /// Peeks a string of the given length from the source stream.
+        /// </summary>
+        public string PeekString(int Length)
+        {
+            return Source.Substring(Position, Length);
+        }
+
+        /// <summary>
+        /// "Slices" a token of the given type and length from the source stream.
+        /// </summary>
+        public Token SliceToken(TokenType Type, int Length)
+        {
+            int actualEndPos = Math.Min(Source.Length, Position + Length);
+            int actualLength = actualEndPos - Position;
+            var token = new Token(
+                PeekString(actualLength),
+                Type, Document, Position);
+            srcPos = actualEndPos;
+            return token;
+        }
+
+        /// <summary>
+        /// Reads a single token from the input document. If there are no
+        /// more tokens to read, then an end-of-file token is returned.
+        /// </summary>
+        public Token ReadToken()
+        {
+            if (IsEmpty)
+                return SliceToken(TokenType.EndOfFile, 0);
+
+            TokenType tokTy;
+            if (singleCharTokens.TryGetValue(PeekString(1), &tokTy))
+                return SliceToken(tokTy, 1);
+
+            return SliceToken(TokenType.Unknown, 1);
+        }
+    }
+}

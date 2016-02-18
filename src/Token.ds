@@ -1,0 +1,71 @@
+using System;
+using Flame.Compiler;
+
+namespace CompareTest
+{
+    /// <summary>
+    /// A data structure that represents a single token.
+    /// </summary>
+    public class Token
+    {
+        public const this(
+            set string Contents, set TokenType Type,
+            set ISourceDocument Document, set int Offset);
+
+        /// <summary>
+        /// Gets the token's contents.
+        /// </summary>
+        public string Contents { get; private set; }
+
+        /// <summary>
+        /// Gets the token's type.
+        /// </summary>
+        public TokenType Type { get; private set; }
+
+        /// <summary>
+        /// Gets the source document this token belongs to.
+        /// </summary>
+        public ISourceDocument Document { get; private set; }
+
+        /// <summary>
+        /// Gets this token's offset in the source document's contents.
+        /// </summary>
+        public int Offset { get; private set; }
+
+        /// <summary>
+        /// Gets this token's source location.
+        /// </summary>
+        public SourceLocation Location
+        {
+            get
+            {
+                return new SourceLocation(Document, Offset, Contents.Length);
+            }
+        }
+    }
+
+    /// <summary>
+    /// An enumeration of possible token types.
+    /// </summary>
+    public enum TokenType : int
+    {
+        // The end-of-file token
+        EndOfFile = -1,
+        // An unknown token
+        Unknown = 0,
+        // A comment
+        Comment = 1,
+        // Any sequence of identifier characters
+        Identifier = 2,
+        // Any sequence of whitespace characters
+        Whitespace = 3,
+        // '$'
+        Dollar = 4,
+        // '('
+        LParen = 5,
+        // ')'
+        RParen = 6,
+        // '@'
+        At = 7
+    }
+}
