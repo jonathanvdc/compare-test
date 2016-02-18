@@ -28,43 +28,55 @@ namespace CompareTest
         Configuration Execute(Configuration Config, ExecutionState State);
     }
 
-    public class VerbatimExpression : IExpression
+    /// <summary>
+    /// An expression that consists of a single token.
+    /// </summary>
+    public class TokenExpression : IExpression
     {
-        public const this(set string Contents);
+        public const this(set Token Contents);
 
-        public string Contents { get; private set; }
+        /// <summary>
+        /// Gets this token-expression's single token.
+        /// </summary>
+        public Token Contents { get; private set; }
 
         /// <summary>
         /// Evaluates this test expression for the given configuration.
         /// </summary>
         public string Evaluate(Configuration Config, ExecutionState State)
         {
-            return Contents;
+            return Contents.Contents;
         }
 
         public override string ToString()
         {
-            return Contents;
+            return Contents.Contents;
         }
     }
 
-    public class ReplacementExpression : IExpression
+    /// <summary>
+    /// An expression that identifies a variable.
+    /// </summary>
+    public class VariableExpression : IExpression
     {
-        public const this(set string Key);
+        public const this(set Token Identifier);
 
-        public string Key { get; private set; }
+        /// <summary>
+        /// Gets this replacement-expression's key token.
+        /// </summary>
+        public Token Identifier { get; private set; }
 
         /// <summary>
         /// Evaluates this test expression for the given configuration.
         /// </summary>
         public string Evaluate(Configuration Config, ExecutionState State)
         {
-            return Config.Variables[Key];
+            return Config.Variables[Identifier.Contents];
         }
 
         public override string ToString()
         {
-            return "$(" + Key + ")";
+            return "$" + Identifier.Contents;
         }
     }
 

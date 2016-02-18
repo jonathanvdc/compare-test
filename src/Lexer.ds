@@ -51,33 +51,6 @@ namespace CompareTest
         public bool IsEmpty { get { return srcPos >= Source.Length; } }
 
         /// <summary>
-        /// Checks if the given character is an identifier-head character.
-        /// </summary>
-        public static bool IsIdentifierHeadChar(char Value)
-        {
-            return char.IsLetter(Value);
-        }
-
-        /// <summary>
-        /// Checks if the given character is an identifier-tail character.
-        /// </summary>
-        public static bool IsIdentifierTailChar(char Value)
-        {
-            return IsIdentifierHeadChar(Value)
-                || char.IsDigit(Value)
-                || Value == '-';
-        }
-
-        /// <summary>
-        /// Gets a boolean value that tells whether the given
-        /// token type is a trivial token type.
-        /// </summary>
-        public static bool IsTrivia(TokenType Type)
-        {
-            return Type == TokenType.Comment || Type == TokenType.Whitespace;
-        }
-
-        /// <summary>
         /// Peeks a single character from the source stream.
         /// </summary>
         public char PeekChar()
@@ -136,8 +109,8 @@ namespace CompareTest
 
             if (PeekString(2) == "//")
                 return SliceWhile(TokenType.Comment, bool(char c) => c != '\n');
-            else if (IsIdentifierHeadChar(PeekChar()))
-                return SliceWhile(TokenType.Identifier, IsIdentifierTailChar);
+            else if (TokenHelpers.IsIdentifierHeadChar(PeekChar()))
+                return SliceWhile(TokenType.Identifier, TokenHelpers.IsIdentifierTailChar);
             else if (char.IsWhiteSpace(PeekChar()))
                 return SliceWhile(TokenType.Whitespace, char.IsWhiteSpace);
 

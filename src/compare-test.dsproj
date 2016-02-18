@@ -18,6 +18,7 @@
     <Compile Include="Configuration.ds" />
     <Compile Include="ExecutionState.ds" />
     <Compile Include="Lexer.ds" />
+    <Compile Include="Parser.ds" />
     <Compile Include="Program.ds" />
     <Compile Include="Section.ds" />
     <Compile Include="SyntaxException.ds" />

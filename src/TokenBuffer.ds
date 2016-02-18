@@ -81,7 +81,7 @@ namespace CompareTest
             var node = cachedTokens.First;
             while (true)
             {
-                if (!Lexer.IsTrivia(peek.Type))
+                if (!TokenHelpers.IsTrivia(peek.Type))
                     nontriviaCounter++;
 
                 if (nontriviaCounter == Lookahead)
@@ -101,6 +101,15 @@ namespace CompareTest
         }
 
         /// <summary>
+        /// Peeks a nontrivial token from the token buffer.
+        /// </summary>
+        public Token PeekNontrivialToken()
+        {
+            return PeekNontrivialToken(0);
+        }
+
+
+        /// <summary>
         /// Logically reads a single token from the token buffer.
         /// </summary>
         public Token ReadToken()
@@ -118,7 +127,7 @@ namespace CompareTest
         public Token ReadNontrivialToken()
         {
             var tok = ReadToken();
-            if (!Lexer.IsTrivia(tok.Type))
+            if (!TokenHelpers.IsTrivia(tok.Type))
                 return tok; // We found a nontrivial token.
             else
                 return ReadNontrivialToken(); // Try again.
@@ -132,7 +141,7 @@ namespace CompareTest
         {
             var nodes = new List<MarkupNode>();
             nodes.Add(new MarkupNode(NodeConstants.TextNodeType, "expected token of type '"));
-            nodes.Add(new MarkupNode(NodeConstants.BrightNodeType, Expected.ToString()));
+            nodes.Add(new MarkupNode(NodeConstants.BrightNodeType, TokenHelpers.NameTokenType(Expected)));
             nodes.Add(new MarkupNode(NodeConstants.TextNodeType, "', got '"));
             nodes.Add(new MarkupNode(NodeConstants.BrightNodeType, Found.Contents));
             nodes.Add(new MarkupNode(NodeConstants.TextNodeType, "'."));
@@ -148,11 +157,32 @@ namespace CompareTest
         /// created, and an error is logged to the given log.
         /// </summary>
         public Token ExpectToken(TokenType Type, ICompilerLog Log)
+            out (result) { result.Type == Type }
         {
             var tok = PeekToken();
             if (tok.Type == Type)
             {
                 return ReadToken();
+            }
+            else
+            {
+                LogUnexpected(Log, Type, tok);
+                return new Token("", Type, tok.Document, tok.Offset);
+            }
+        }
+
+        /// <summary>
+        /// Reads a token from the token buffer, and expect it to be of
+        /// the given type. If not, then an empty token of the specified type is
+        /// created, and an error is logged to the given log.
+        /// </summary>
+        public Token ExpectNontrivialToken(TokenType Type, ICompilerLog Log)
+            out (result) { result.Type == Type }
+        {
+            var tok = PeekNontrivialToken();
+            if (tok.Type == Type)
+            {
+                return ReadNontrivialToken();
             }
             else
             {

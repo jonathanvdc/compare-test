@@ -28,7 +28,7 @@ namespace CompareTest
             var options = BuildArguments.Parse(optParser, Args);
             var log = new ConsoleLog(ConsoleEnvironment.AcquireConsole(options), options);
 
-            var sections = new Dictionary<string, Section>();
+            /* var sections = new Dictionary<string, Section>();
             var buildLines = new List<IStatement>();
             buildLines.Add(new CommandStatement(new ConcatExpression(new ReplacementExpression("dsc"), new VerbatimExpression(" --version"))));
             sections["run"] = new Section("run", buildLines, new Dictionary<string, Section>());
@@ -44,7 +44,7 @@ namespace CompareTest
             // Console.WriteLine(config.ToString());
 
             var manager = new TestManager(config);
-            manager.RunTest(root);
+            manager.RunTest(root); */
         }
     }
 }

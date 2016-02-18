@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Flame.Compiler;
 
 namespace CompareTest
@@ -75,5 +76,74 @@ namespace CompareTest
         RBrace = 10,
         // ';'
         Semicolon = 11
+    }
+
+    /// <summary>
+    /// A number of helper functions for token (types).
+    /// </summary>
+    public static class TokenHelpers
+    {
+        static this()
+        {
+            tokenNames = new Dictionary<TokenType, string>();
+            tokenNames[TokenType.EndOfFile] = "end-of-file";
+            tokenNames[TokenType.Unknown] = "unknown";
+            tokenNames[TokenType.Comment] = "comment";
+            tokenNames[TokenType.Identifier] = "identifier";
+            tokenNames[TokenType.Dollar] = "$";
+            tokenNames[TokenType.LParen] = "(";
+            tokenNames[TokenType.RParen] = ")";
+            tokenNames[TokenType.At] = "@";
+            tokenNames[TokenType.Equals] = "=";
+            tokenNames[TokenType.LBrace] = "{";
+            tokenNames[TokenType.RBrace] = "}";
+            tokenNames[TokenType.Semicolon] = ";";
+        }
+
+        private Dictionary<TokenType, string> tokenNames;
+
+        /// <summary>
+        /// Names the given token type.
+        /// </summary>
+        public string NameTokenType(TokenType Type)
+        {
+            return tokenNames[Type];
+        }
+
+        /// <summary>
+        /// Gets a boolean value that tells whether the given
+        /// token type is a trivial token type.
+        /// </summary>
+        public bool IsTrivia(TokenType Type)
+        {
+            return Type == TokenType.Comment || Type == TokenType.Whitespace;
+        }
+
+        /// <summary>
+        /// Tells if the given token type terminates some structure.
+        /// </summary>
+        public bool TerminatesStructure(TokenType Type)
+        {
+            return Type == TokenType.RBrace || Type == TokenType.RParen
+                || Type == TokenType.Semicolon || Type == TokenType.EndOfFile;
+        }
+
+        /// <summary>
+        /// Checks if the given character is an identifier-head character.
+        /// </summary>
+        public bool IsIdentifierHeadChar(char Value)
+        {
+            return char.IsLetter(Value);
+        }
+
+        /// <summary>
+        /// Checks if the given character is an identifier-tail character.
+        /// </summary>
+        public bool IsIdentifierTailChar(char Value)
+        {
+            return IsIdentifierHeadChar(Value)
+                || char.IsDigit(Value)
+                || Value == '-';
+        }
     }
 }
