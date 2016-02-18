@@ -18,6 +18,9 @@ namespace CompareTest
             this.singleCharTokens["@"] = TokenType.At;
             this.singleCharTokens["("] = TokenType.LParen;
             this.singleCharTokens[")"] = TokenType.RParen;
+            this.singleCharTokens["="] = TokenType.Equals;
+            this.singleCharTokens["{"] = TokenType.LBrace;
+            this.singleCharTokens["}"] = TokenType.RBrace;
         }
 
         /// <summary>
@@ -32,6 +35,7 @@ namespace CompareTest
 
         private int srcPos;
 
+        // A dictionary that maps single-character strings to their token types.
         private Dictionary<string, TokenType> singleCharTokens;
 
         /// <summary>
@@ -44,6 +48,32 @@ namespace CompareTest
         /// has been reached.
         /// </summary>
         public bool IsEmpty { get { return srcPos >= Source.Length; } }
+
+        /// <summary>
+        /// Checks if the given character is an identifier-head character.
+        /// </summary>
+        public static bool IsIdentifierHeadChar(char Value)
+        {
+            return char.IsLetter(Value);
+        }
+
+        /// <summary>
+        /// Checks if the given character is an identifier-tail character.
+        /// </summary>
+        public static bool IsIdentifierTailChar(char Value)
+        {
+            return IsIdentifierHeadChar(Value)
+                || char.IsDigit(Value)
+                || Value == '-';
+        }
+
+        /// <summary>
+        /// Peeks a single character from the source stream.
+        /// </summary>
+        public char PeekChar()
+        {
+            return Source[Position];
+        }
 
         /// <summary>
         /// Peeks a string of the given length from the source stream.
@@ -68,6 +98,20 @@ namespace CompareTest
         }
 
         /// <summary>
+        /// "Slices" a token of the given type. Characters are consumed from
+        /// the source stream until the given predicate returns false.
+        /// </summary>
+        public Token SliceWhile(TokenType Type, bool(char) Predicate)
+        {
+            int i = Position;
+            while (i < Source.Length && Predicate(Source[i]))
+            {
+                i++;
+            }
+            return SliceToken(Type, i - Position);
+        }
+
+        /// <summary>
         /// Reads a single token from the input document. If there are no
         /// more tokens to read, then an end-of-file token is returned.
         /// </summary>
@@ -79,6 +123,11 @@ namespace CompareTest
             TokenType tokTy;
             if (singleCharTokens.TryGetValue(PeekString(1), &tokTy))
                 return SliceToken(tokTy, 1);
+
+            if (PeekString(2) == "//")
+                return SliceWhile(TokenType.Comment, bool(char c) => c != '\n');
+            else if (IsIdentifierHeadChar(PeekChar()))
+                return SliceWhile(TokenType.Identifier, IsIdentifierTailChar);
 
             return SliceToken(TokenType.Unknown, 1);
         }

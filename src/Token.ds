@@ -66,6 +66,12 @@ namespace CompareTest
         // ')'
         RParen = 6,
         // '@'
-        At = 7
+        At = 7,
+        // '='
+        Equals = 8,
+        // '{'
+        LBrace = 9,
+        // '}'
+        RBrace = 10
     }
 }
