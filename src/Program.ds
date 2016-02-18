@@ -6,6 +6,17 @@ namespace CompareTest
 {
     public static class Program
     {
+        private string GetPlatformName()
+        {
+            var platform = Environment.OSVersion.Platform;
+            if (platform == PlatformID.Unix)
+                return "unix";
+            else if (platform == PlatformID.MacOSX)
+                return "osx";
+            else
+                return "windows";
+        }
+
         public void Main(string[] Args)
         {
             var sections = new Dictionary<string, Section>();
@@ -16,7 +27,7 @@ namespace CompareTest
             // Console.WriteLine(root.ToString());
 
             var configOptions = new Dictionary<string, string>();
-            configOptions["platform"] = "linux";
+            configOptions["platform"] = GetPlatformName();
             configOptions["net-runtime"] = "mono";
             configOptions["dsc"] = "dsc";
             configOptions[TestManager.WorkingDirectoryKey] = Environment.CurrentDirectory;
