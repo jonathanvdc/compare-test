@@ -28,23 +28,43 @@ namespace CompareTest
             var options = BuildArguments.Parse(optParser, Args);
             var log = new ConsoleLog(ConsoleEnvironment.AcquireConsole(options), options);
 
-            /* var sections = new Dictionary<string, Section>();
-            var buildLines = new List<IStatement>();
-            buildLines.Add(new CommandStatement(new ConcatExpression(new ReplacementExpression("dsc"), new VerbatimExpression(" --version"))));
-            sections["run"] = new Section("run", buildLines, new Dictionary<string, Section>());
-            var root = new Section("", new List<IStatement>(), sections);
-            // Console.WriteLine(root.ToString());
+             var configOptions = new Dictionary<string, string>();
+             configOptions["platform"] = GetPlatformName();
+             configOptions["net-runtime"] = "mono";
+             configOptions[TestManager.WorkingDirectoryKey] = Environment.CurrentDirectory;
+             var config = new Configuration("default", configOptions);
 
-            var configOptions = new Dictionary<string, string>();
-            configOptions["platform"] = GetPlatformName();
-            configOptions["net-runtime"] = "mono";
-            configOptions["dsc"] = "dsc";
-            configOptions[TestManager.WorkingDirectoryKey] = Environment.CurrentDirectory;
-            var config = new Configuration("default", configOptions);
-            // Console.WriteLine(config.ToString());
+            foreach (var srcPath in options.SourcePaths)
+            {
+                var root = ReadTestDescription(srcPath, log);
+                var manager = new TestManager(config);
+                manager.RunTest(root);
+            }
+        }
 
-            var manager = new TestManager(config);
-            manager.RunTest(root); */
+        public Section ReadTestDescription(PathIdentifier Path, ICompilerLog Log)
+        {
+            var fs = new FileStream(Path.Path, FileMode.Open, FileAccess.Read);
+            try
+            {
+                var reader = new StreamReader(fs);
+                try
+                {
+                    var text = reader.ReadToEnd();
+                    var srcDoc = new SourceDocument(text, Path.Path);
+                    var tokBuf = new TokenBuffer(new Lexer(srcDoc));
+                    var parser = new Parser(Log);
+                    return parser.ParseRootSection(tokBuf);
+                }
+                finally
+                {
+                    reader.Dispose();
+                }
+            }
+            finally
+            {
+                fs.Dispose();
+            }
         }
     }
 }

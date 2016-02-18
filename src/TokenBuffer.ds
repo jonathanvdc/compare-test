@@ -76,19 +76,10 @@ namespace CompareTest
         public Token PeekNontrivialToken(int Lookahead)
             in { Lookahead >= 0 }
         {
-            Token peek = null;
             int nontriviaCounter = -1;
             var node = cachedTokens.First;
             while (true)
             {
-                if (!TokenHelpers.IsTrivia(peek.Type))
-                    nontriviaCounter++;
-
-                if (nontriviaCounter == Lookahead)
-                    return peek;
-
-                node = node.Next;
-
                 if (node == null)
                 {
                     // Quickly buffer another token if we run out of buffered
@@ -96,6 +87,14 @@ namespace CompareTest
                     BufferToken();
                     node = cachedTokens.Last;
                 }
+
+                if (!TokenHelpers.IsTrivia(node.Value.Type))
+                    nontriviaCounter++;
+
+                if (nontriviaCounter == Lookahead)
+                    return node.Value;
+
+                node = node.Next;
             }
             throw new Exception("Unreachable code.");
         }

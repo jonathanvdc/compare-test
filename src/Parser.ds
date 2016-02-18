@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Pixie;
 
 namespace CompareTest
 {
@@ -118,6 +119,66 @@ namespace CompareTest
             var expr = ParseExpression(Buffer);
             Buffer.ExpectNontrivialToken(TokenType.Semicolon, Log);
             return new CommandStatement(expr);
+        }
+
+        /// <summary>
+        /// Parses a test description section from the given token buffer.
+        /// </summary>
+        public Section ParseSection(TokenBuffer Buffer)
+        {
+            var ident = Buffer.ExpectNontrivialToken(TokenType.Identifier, Log);
+            Buffer.ExpectNontrivialToken(TokenType.LBrace, Log);
+            var result = ParseSectionContents(ident, Buffer);
+            Buffer.ExpectNontrivialToken(TokenType.RBrace, Log);
+            return result;
+        }
+
+        /// <summary>
+        /// Parses the root section of the given buffer. This is equivalent
+        /// to the entire test description.
+        /// </summary>
+        public Section ParseRootSection(TokenBuffer Buffer)
+        {
+            return ParseSectionContents(
+                new Token("", TokenType.Identifier, Buffer.Tokenizer.Document, 0),
+                Buffer);
+        }
+
+        /// <summary>
+        /// Parses a section's contents.
+        /// </summary>
+        private Section ParseSectionContents(Token Name, TokenBuffer Buffer)
+        {
+            var stmts = new List<IStatement>();
+            var subsections = new Dictionary<string, Section>();
+            while (!TokenHelpers.TerminatesStructure(Buffer.PeekNontrivialToken().Type))
+            {
+                if (Buffer.PeekNontrivialToken(0).Type == TokenType.Identifier &&
+                    Buffer.PeekNontrivialToken(1).Type == TokenType.LBrace)
+                {
+                    var sec = ParseSection(Buffer);
+                    string secName = sec.Name.Contents;
+                    if (subsections.ContainsKey(secName))
+                    {
+                        // Log an error if we try to redefine a section.
+                        var nodes = new List<MarkupNode>();
+                        nodes.Add(new MarkupNode(NodeConstants.TextNodeType, "section '"));
+                        nodes.Add(new MarkupNode(NodeConstants.BrightNodeType, secName));
+                        nodes.Add(new MarkupNode(NodeConstants.TextNodeType, "' is defined more than once in the same scope."));
+
+                        Log.LogError(new Flame.Compiler.LogEntry(
+                            "section redefinition",
+                            new MarkupNode("entry", nodes),
+                            sec.Name.Location));
+                    }
+                    subsections[secName] = sec;
+                }
+                else
+                {
+                    stmts.Add(ParseStatement(Buffer));
+                }
+            }
+            return new Section(Name, stmts, subsections);
         }
     }
 }

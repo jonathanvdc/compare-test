@@ -63,7 +63,9 @@ namespace CompareTest
         /// </summary>
         public string PeekString(int Length)
         {
-            return Source.Substring(Position, Length);
+            int actualEndPos = Math.Min(Source.Length, Position + Length);
+            int actualLength = actualEndPos - Position;
+            return Source.Substring(Position, actualLength);
         }
 
         /// <summary>
@@ -71,12 +73,10 @@ namespace CompareTest
         /// </summary>
         public Token SliceToken(TokenType Type, int Length)
         {
-            int actualEndPos = Math.Min(Source.Length, Position + Length);
-            int actualLength = actualEndPos - Position;
             var token = new Token(
-                PeekString(actualLength),
+                PeekString(Length),
                 Type, Document, Position);
-            srcPos = actualEndPos;
+            srcPos += token.Contents.Length;
             return token;
         }
 

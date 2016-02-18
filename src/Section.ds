@@ -11,14 +11,14 @@ namespace CompareTest
     public class Section
     {
         public const this(
-            set string Name,
+            set Token Name,
             set IReadOnlyList<IStatement> Statements,
             set IReadOnlyDictionary<string, Section> Sections);
 
         /// <summary>
         /// Gets this section's name.
         /// </summary>
-        public string Name { get; private set; }
+        public Token Name { get; private set; }
 
         /// <summary>
         /// Gets the sequence of top-level statements in this file section.
@@ -48,12 +48,12 @@ namespace CompareTest
 
         /// <summary>
         /// Gets an optional statement subsection in this section.
-        /// The empty statement is returned if the specified section is absent. 
+        /// The empty statement is returned if the specified section is absent.
         /// </summary>
-        public IStatement GetOptionalStatementSection(string Name)
+        public IStatement GetOptionalStatementSection(string SubsectionName)
         {
             Section result;
-            if (Sections.TryGetValue(Name, &result))
+            if (Sections.TryGetValue(SubsectionName, &result))
                 return result.AsStatement();
             else
                 return EmptyStatement;
@@ -76,7 +76,7 @@ namespace CompareTest
             bool isRoot = Nesting == 0;
             if (!isRoot)
             {
-                AppendLine(Name, Builder, Nesting);
+                AppendLine(Name.Contents, Builder, Nesting);
                 AppendLine("{", Builder, Nesting);
             }
             foreach (var line in Statements)
@@ -96,7 +96,7 @@ namespace CompareTest
         public override string ToString()
         {
             var sb = new StringBuilder();
-            if (string.IsNullOrWhiteSpace(Name))
+            if (string.IsNullOrWhiteSpace(Name.Contents))
                 AppendToStringBuilder(sb, 0);
             else
                 AppendToStringBuilder(sb, 1);
