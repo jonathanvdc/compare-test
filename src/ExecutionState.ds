@@ -88,13 +88,14 @@ namespace CompareTest
         /// </summary>
         public string RunProcess(string Command)
         {
-            int firstSpace = Command.IndexOf(' ');
+            string trimmedCommand = Command.Trim(null);
+            int firstSpace = trimmedCommand.IndexOf(' ');
             if (firstSpace < 0)
-                return RunProcess(Command, "");
+                return RunProcess(trimmedCommand, "");
             else
                 return RunProcess(
-                    Command.Substring(0, firstSpace),
-                    Command.Substring(firstSpace + 1));
+                    trimmedCommand.Substring(0, firstSpace),
+                    trimmedCommand.Substring(firstSpace + 1));
         }
     }
 }

@@ -11,7 +11,7 @@ namespace CompareTest
         public const string BuildSectionName = "build";
         public const string RunSectionName = "run";
         public const string ConfigurationsSectionName = "configs";
-        public const string DefaultsSectionName = "defaults";
+        public const string InitializationSectionName = "init";
         public const string WorkingDirectoryKey = "working-directory";
 
         public const this(set Configuration DefaultConfiguration);
@@ -61,7 +61,7 @@ namespace CompareTest
             var state = new ExecutionState(WorkingDirectory);
 
             // Run the 'defaults' section first.
-            var defaultStmt = Root.GetOptionalStatementSection(DefaultsSectionName);
+            var defaultStmt = Root.GetOptionalStatementSection(InitializationSectionName);
             var defaultConfig = defaultStmt.Execute(DefaultConfiguration, state);
 
             var rootStmt = Root.GetOptionalStatementSection(RunSectionName);
