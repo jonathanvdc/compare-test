@@ -1,0 +1,6 @@
+run
+{
+    // Print the platform, and the .NET runtime
+    echo $platform;
+    echo $net-runtime;
+}
