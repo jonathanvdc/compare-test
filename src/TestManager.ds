@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Flame.Compiler;
 
 namespace CompareTest
 {
@@ -14,12 +15,18 @@ namespace CompareTest
         public const string InitializationSectionName = "init";
         public const string WorkingDirectoryKey = "working-directory";
 
-        public const this(set Configuration DefaultConfiguration);
+        public const this(
+            set Configuration DefaultConfiguration, ICompilerLog Log);
 
         /// <summary>
         /// Gets this test manager's default configuration.
         /// </summary>
         public Configuration DefaultConfiguration { get; private set; }
+
+        /// <summary>
+        /// Gets this test manager's compiler log.
+        /// </summary>
+        public ICompilerLog Log { get; private set; }
 
         /// <summary>
         /// Gets the working directory for this test manager.
@@ -58,7 +65,7 @@ namespace CompareTest
         /// </summary>
         public bool RunTest(Section Root)
         {
-            var state = new ExecutionState(WorkingDirectory);
+            var state = new ExecutionState(WorkingDirectory, Log);
 
             // Run the 'defaults' section first.
             var defaultStmt = Root.GetOptionalStatementSection(InitializationSectionName);

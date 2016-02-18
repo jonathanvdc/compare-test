@@ -37,7 +37,7 @@ namespace CompareTest
             foreach (var srcPath in options.SourcePaths)
             {
                 var root = ReadTestDescription(srcPath, log);
-                var manager = new TestManager(config);
+                var manager = new TestManager(config, log);
                 manager.RunTest(root);
             }
         }

@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.Text;
+using Flame.Compiler;
 
 namespace CompareTest
 {
@@ -10,9 +11,11 @@ namespace CompareTest
     /// </summary>
     public class ExecutionState
     {
-        public const this(set string WorkingDirectory, set int ExitCode);
+        public const this(
+            set string WorkingDirectory, set ICompilerLog Log,
+            set int ExitCode);
 
-        public const this(set string WorkingDirectory)
+        public const this(set string WorkingDirectory, set ICompilerLog Log)
         {
             this.ExitCode = 0;
         }
@@ -29,6 +32,11 @@ namespace CompareTest
         public int ExitCode { get; set; }
 
         /// <summary>
+        /// Gets the log that has been associated with this execution state.
+        /// </summary>
+        public ICompilerLog Log { get; private set; }
+
+        /// <summary>
         /// Gets a boolean value that tells whether this state is in an
         /// error state. This is dependent on the last exit code.
         /// A state that is in error cannot be instructed to
@@ -41,7 +49,7 @@ namespace CompareTest
         /// </summary>
         public ExecutionState Fork()
         {
-            return new ExecutionState(WorkingDirectory, ExitCode);
+            return new ExecutionState(WorkingDirectory, Log, ExitCode);
         }
 
         /// <summary>
