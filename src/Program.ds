@@ -1,6 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Flame.Compiler;
+using Flame.Front;
+using Flame.Front.Cli;
+using Flame.Front.Options;
 
 namespace CompareTest
 {
@@ -19,6 +23,11 @@ namespace CompareTest
 
         public void Main(string[] Args)
         {
+            // Parse build arguments, create a log
+            var optParser = StringOptionParser.CreateDefault();
+            var options = BuildArguments.Parse(optParser, Args);
+            var log = new ConsoleLog(ConsoleEnvironment.AcquireConsole(options), options);
+
             var sections = new Dictionary<string, Section>();
             var buildLines = new List<IStatement>();
             buildLines.Add(new CommandStatement(new ConcatExpression(new ReplacementExpression("dsc"), new VerbatimExpression(" --version"))));
