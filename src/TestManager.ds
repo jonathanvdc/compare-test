@@ -109,7 +109,8 @@ namespace CompareTest
         private int RunTest(
             Section Root, Configuration Config,
             ExecutionState State, PathIdentifier Path,
-            ConfigDict AllConfigs, int ConfigurationIndex)
+            ConfigDict AllConfigs, int ConfigurationIndex,
+            int TotalConfigCount)
         {
             // The 'init' section already ran by this time.
             var rootStmt = Root.GetOptionalStatementSection(RunSectionName);
@@ -131,7 +132,7 @@ namespace CompareTest
 
                 LogCompleted(new TestOutcome(
                     Path, config, ConfigurationIndex + i, configState.HasErrored),
-                    Tests.Count);
+                    TotalConfigCount);
                 i++;
             }
             return ConfigurationIndex + AllConfigs.Count;
@@ -159,7 +160,7 @@ namespace CompareTest
                 var testTuple = testPair.Value;
                 i = RunTest(
                     testTuple.Item1, testTuple.Item2, testTuple.Item3,
-                    testPair.Key, allConfigs[testTuple.Item1], i);
+                    testPair.Key, allConfigs[testTuple.Item1], i, totalConfigCount);
             }
         }
     }

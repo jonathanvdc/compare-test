@@ -99,7 +99,7 @@ namespace CompareTest
 
         public override string ToString()
         {
-            return "$" + Identifier.Contents;
+            return "$(" + Identifier.Contents + ")";
         }
     }
 
@@ -207,7 +207,9 @@ namespace CompareTest
         {
             string commandStr = Command.Evaluate(Config, State);
             if (!State.HasErrored)
-                State.RunProcess(commandStr);
+            {
+                State.Write(State.RunProcess(commandStr));
+            }
             return Config;
         }
 
@@ -243,7 +245,7 @@ namespace CompareTest
 
         public Configuration Execute(Configuration Config, ExecutionState State)
         {
-            string evalValue = Value.Evaluate(Config, State);
+            string evalValue = Value.Evaluate(Config, State).Trim(null);
             return Config.WithVariable(Identifier.Contents, evalValue);
         }
 

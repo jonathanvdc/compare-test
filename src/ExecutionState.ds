@@ -78,20 +78,25 @@ namespace CompareTest
             process.WaitForExit();
             this.ExitCode = process.ExitCode;
 
-            // Write output to console no matter what.
-            Console.Write(output);
-
             if (HasErrored)
             {
                 // Write output to log for debugging purposes.
                 string err = process.StandardError.ReadToEnd();
                 if (!string.IsNullOrWhiteSpace(err))
                 {
-                    Console.Write(err);
+                    Write(err);
                 }
             }
 
             return output;
+        }
+
+        /// <summary>
+        /// Writes a message to the console.
+        /// </summary>
+        public void Write(string Message)
+        {
+            Console.Write(Message);
         }
 
         /// <summary>

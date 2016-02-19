@@ -61,7 +61,16 @@ namespace CompareTest
         public VariableExpression ParseVariableExpression(TokenBuffer Buffer)
         {
             Buffer.ExpectNontrivialToken(TokenType.Dollar, Log);
+            bool isParenthesized = Buffer.PeekNontrivialToken().Type == TokenType.LParen;
+            if (isParenthesized)
+            {
+                Buffer.ExpectNontrivialToken(TokenType.LParen, Log);
+            }
             var ident = Buffer.ExpectNontrivialToken(TokenType.Identifier, Log);
+            if (isParenthesized)
+            {
+                Buffer.ExpectNontrivialToken(TokenType.RParen, Log);
+            }
             return new VariableExpression(ident);
         }
 
