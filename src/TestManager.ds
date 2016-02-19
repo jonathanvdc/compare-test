@@ -5,6 +5,34 @@ using Flame.Compiler;
 namespace CompareTest
 {
     /// <summary>
+    /// A data structure that describes a test outcome.
+    /// </summary>
+    public class TestResult
+    {
+        public const this(
+            set IReadOnlyList<string> SuccessfulConfigurations,
+            set IReadOnlyList<string> FailedConfigurations);
+
+        /// <summary>
+        /// Gets a read-only list of configurations that were tested successfully.
+        /// </summary>
+        public IReadOnlyList<string> SuccessfulConfigurations { get; private set; }
+
+        /// <summary>
+        /// Gets a read-only list of configurations that were tested unsuccessfully.
+        /// </summary>
+        public IReadOnlyList<string> FailedConfigurations { get; private set; }
+
+        /// <summary>
+        /// Tells if this test result contains at least one failed configuration.
+        /// </summary>
+        public bool HasFailed
+        {
+            get { return FailedConfigurations.Count > 0; }
+        }
+    }
+
+    /// <summary>
     /// A class of objects that take care of running tests.
     /// </summary>
     public class TestManager
@@ -42,19 +70,19 @@ namespace CompareTest
         /// <summary>
         /// Extracts all configuration statements from the given root section.
         /// </summary>
-        private IReadOnlyList<IStatement> GetConfigurations(Section Root)
+        private IReadOnlyDictionary<string, IStatement> GetConfigurations(Section Root)
         {
-            var results = new List<IStatement>();
+            var results = new Dictionary<string, IStatement>();
             if (Root.Sections.TryGetValue(ConfigurationsSectionName, &Section configSec))
             {
                 foreach (var sec in configSec.Sections)
                 {
-                    results.Add(sec.Value.AsStatement());
+                    results[sec.Key] = sec.Value.AsStatement();
                 }
             }
             else
             {
-                results.Add(EmptyStatement);
+                results["default"] = EmptyStatement;
             }
             return results;
         }
@@ -63,7 +91,7 @@ namespace CompareTest
         /// Runs the given test. A boolean is returned that indicates
         /// success.
         /// </summary>
-        public bool RunTest(Section Root)
+        public TestResult RunTest(Section Root)
         {
             var state = new ExecutionState(WorkingDirectory, Log);
 
@@ -74,22 +102,29 @@ namespace CompareTest
             var rootStmt = Root.GetOptionalStatementSection(RunSectionName);
             var buildStmt = Root.GetOptionalStatementSection(BuildSectionName);
 
-            foreach (var configStmt in GetConfigurations(Root))
+            var failedConfigs = new List<string>();
+            var successfulConfigs = new List<string>();
+
+            foreach (var configPair in GetConfigurations(Root))
             {
                 var configState = state.Fork();
 
-                // Configure...
-                var config = configStmt.Execute(defaultConfig, configState);
+                // Create a subconfiguration...
+                var config = defaultConfig.CreateSubconfiguration(configPair.Key);
+                // ...configure...
+                config = configPair.Value.Execute(config, configState);
                 // ...build...
                 config = buildStmt.Execute(config, configState);
                 // ...and run!
                 rootStmt.Execute(config, configState);
 
                 if (configState.HasErrored)
-                    return false;
+                    failedConfigs.Add(configPair.Key);
+                else
+                    successfulConfigs.Add(configPair.Key);
             }
 
-            return true;
+            return new TestResult(successfulConfigs, failedConfigs);
         }
     }
 }

@@ -38,6 +38,15 @@ namespace CompareTest
         }
 
         /// <summary>
+        /// Creates a sub-configuration from this configuration's options
+        /// and the name of the sub-configuration.
+        /// </summary>
+        public Configuration CreateSubconfiguration(string NewName)
+        {
+            return CreateSubconfiguration(NewName, new Dictionary<string, string>());
+        }
+
+        /// <summary>
         /// Creates a new configuration based on this configuration, where the
         /// variable with the given name is assigned the given value.
         /// </summary>

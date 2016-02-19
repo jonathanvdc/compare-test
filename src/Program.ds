@@ -28,11 +28,11 @@ namespace CompareTest
             var options = BuildArguments.Parse(optParser, Args);
             var log = new ConsoleLog(ConsoleEnvironment.AcquireConsole(options), options);
 
-             var configOptions = new Dictionary<string, string>();
-             configOptions["platform"] = GetPlatformName();
-             configOptions["net-runtime"] = "mono";
-             configOptions[TestManager.WorkingDirectoryKey] = Environment.CurrentDirectory;
-             var config = new Configuration("default", configOptions);
+            var configOptions = new Dictionary<string, string>();
+            configOptions["platform"] = GetPlatformName();
+            configOptions["net-runtime"] = "mono";
+            configOptions[TestManager.WorkingDirectoryKey] = Environment.CurrentDirectory;
+            var config = new Configuration("default", configOptions);
 
             foreach (var srcPath in options.SourcePaths)
             {
