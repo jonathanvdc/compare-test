@@ -1,0 +1,6 @@
+
+tests
+{
+    build.test;
+    globals.test;
+}
