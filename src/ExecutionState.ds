@@ -50,7 +50,16 @@ namespace CompareTest
         /// </summary>
         public ExecutionState Fork()
         {
-            return new ExecutionState(WorkingDirectory, Log, ExitCode);
+            return Fork(WorkingDirectory);
+        }
+
+        /// <summary>
+        /// Creates a new execution state from this execution state, with
+        /// the given working directory.
+        /// </summary>
+        public ExecutionState Fork(string NewWorkingDirectory)
+        {
+            return new ExecutionState(NewWorkingDirectory, Log, ExitCode);
         }
 
         /// <summary>
