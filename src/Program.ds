@@ -34,12 +34,30 @@ namespace CompareTest
             configOptions[TestManager.WorkingDirectoryKey] = Environment.CurrentDirectory;
             var config = new Configuration("default", configOptions);
 
-            foreach (var srcPath in options.SourcePaths)
+            var paths = options.SourcePaths;
+            for (int i = 0; i < paths.Length; i++)
             {
+                var srcPath = paths[i];
                 var root = ReadTestDescription(srcPath, log);
                 var manager = new TestManager(config, log);
-                manager.RunTest(root);
+                var result = manager.RunTest(root);
+                LogPercentage(!result.HasFailed, i, paths.Length, srcPath.Path, log);
             }
+        }
+
+        private void LogPercentage(bool Success, int i, int n, string Name, ConsoleLog Log)
+        {
+            double percentage = 100.0 * (double)(i + 1) / (double)n;
+            string percentageStr = (string)percentage;
+            while (percentageStr.Length < 3)
+                percentageStr = " " + percentageStr;
+            if (!Success)
+                Log.Console.Write("[" + percentageStr + "%]", Log.ErrorStyle);
+            else
+                Log.Console.Write("[" + percentageStr + "%]", Log.MessageStyle);
+            Log.Console.Write(" ");
+            Log.Console.Write(Name);
+            Log.Console.WriteLine();
         }
 
         public Section ReadTestDescription(PathIdentifier Path, ICompilerLog Log)
