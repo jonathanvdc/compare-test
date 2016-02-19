@@ -1,35 +1,40 @@
 using System;
 using System.Collections.Generic;
 using Flame.Compiler;
+using Flame.Front;
+using Flame.Front.Cli;
+using Flame.Front.Options;
 
 namespace CompareTest
 {
     /// <summary>
-    /// A data structure that describes a test outcome.
+    /// A data structure that describes the outcome of a test.
     /// </summary>
-    public class TestResult
+    public class TestOutcome
     {
         public const this(
-            set IReadOnlyList<string> SuccessfulConfigurations,
-            set IReadOnlyList<string> FailedConfigurations);
+            set PathIdentifier Path, set Configuration Config,
+            set int Index, set bool HasFailed);
 
         /// <summary>
-        /// Gets a read-only list of configurations that were tested successfully.
+        /// Gets the test's path.
         /// </summary>
-        public IReadOnlyList<string> SuccessfulConfigurations { get; private set; }
+        public PathIdentifier Path { get; private set; }
 
         /// <summary>
-        /// Gets a read-only list of configurations that were tested unsuccessfully.
+        /// Gets the test's configuration.
         /// </summary>
-        public IReadOnlyList<string> FailedConfigurations { get; private set; }
+        public Configuration Config { get; private set; }
 
         /// <summary>
-        /// Tells if this test result contains at least one failed configuration.
+        /// Gets the test/configuration pair's index.
         /// </summary>
-        public bool HasFailed
-        {
-            get { return FailedConfigurations.Count > 0; }
-        }
+        public int Index { get; private set; }
+
+        /// <summary>
+        /// Gets a boolean that tells if this test was a failure.
+        /// </summary>
+        public bool HasFailed { get; private set; }
     }
 
     /// <summary>
@@ -37,40 +42,36 @@ namespace CompareTest
     /// </summary>
     public class TestManager
     {
+        alias SectionTuple = Tuple<Section, Configuration, ExecutionState>;
+        alias ConfigDict = Dictionary<string, IStatement>;
+
         public const string BuildSectionName = "build";
         public const string RunSectionName = "run";
         public const string ConfigurationsSectionName = "configs";
         public const string InitializationSectionName = "init";
+        public const string TestsSectionName = "tests";
         public const string WorkingDirectoryKey = "working-directory";
 
         public const this(
-            set Configuration DefaultConfiguration, set ICompilerLog Log);
+            set IReadOnlyDictionary<PathIdentifier, SectionTuple> Tests,
+            set void(TestOutcome, int) LogCompleted);
 
         /// <summary>
-        /// Gets this test manager's default configuration.
+        /// Gets a dictionary of all tests to run.
         /// </summary>
-        public Configuration DefaultConfiguration { get; private set; }
+        public IReadOnlyDictionary<PathIdentifier, SectionTuple> Tests { get; private set; }
 
         /// <summary>
-        /// Gets this test manager's compiler log.
+        /// A delegate that logs a message that notifies the user of the outcome
+        /// of the given test. The total number of tests/configuration pairs
+        /// is also given.
         /// </summary>
-        public ICompilerLog Log { get; private set; }
-
-        /// <summary>
-        /// Gets the working directory for this test manager.
-        /// </summary>
-        public string WorkingDirectory
-        {
-            get
-            {
-                return DefaultConfiguration.Variables[WorkingDirectoryKey];
-            }
-        }
+        public void(TestOutcome, int) LogCompleted { get; private set; }
 
         /// <summary>
         /// Extracts all configuration statements from the given root section.
         /// </summary>
-        private IReadOnlyDictionary<string, IStatement> GetConfigurations(Section Root)
+        private ConfigDict GetConfigurations(Section Root)
         {
             var results = new Dictionary<string, IStatement>();
             if (Root.Sections.TryGetValue(ConfigurationsSectionName, &Section configSec))
@@ -88,29 +89,39 @@ namespace CompareTest
         }
 
         /// <summary>
-        /// Runs the given test. A boolean is returned that indicates
-        /// success.
+        /// Creates a dictionary that maps all sections to their
+        /// configurations.
         /// </summary>
-        public TestResult RunTest(Section Root)
+        private Dictionary<Section, ConfigDict> GetAllConfigurations()
         {
-            var state = new ExecutionState(WorkingDirectory, Log);
+            var results = new Dictionary<Section, ConfigDict>();
+            foreach (var item in Tests.Values)
+            {
+                var sec = item.Item1;
+                results[sec] = GetConfigurations(sec);
+            }
+            return results;
+        }
 
-            // Run the 'defaults' section first.
-            var defaultStmt = Root.GetOptionalStatementSection(InitializationSectionName);
-            var defaultConfig = defaultStmt.Execute(DefaultConfiguration, state);
-
+        /// <summary>
+        /// Runs a single test. The new total configuration index is returned.
+        /// </summary>
+        private int RunTest(
+            Section Root, Configuration Config,
+            ExecutionState State, PathIdentifier Path,
+            ConfigDict AllConfigs, int ConfigurationIndex)
+        {
+            // The 'init' section already ran by this time.
             var rootStmt = Root.GetOptionalStatementSection(RunSectionName);
             var buildStmt = Root.GetOptionalStatementSection(BuildSectionName);
 
-            var failedConfigs = new List<string>();
-            var successfulConfigs = new List<string>();
-
-            foreach (var configPair in GetConfigurations(Root))
+            int i = 0;
+            foreach (var configPair in AllConfigs)
             {
-                var configState = state.Fork();
+                var configState = State.Fork();
 
                 // Create a subconfiguration...
-                var config = defaultConfig.CreateSubconfiguration(configPair.Key);
+                var config = Config.CreateSubconfiguration(configPair.Key);
                 // ...configure...
                 config = configPair.Value.Execute(config, configState);
                 // ...build...
@@ -118,13 +129,38 @@ namespace CompareTest
                 // ...and run!
                 rootStmt.Execute(config, configState);
 
-                if (configState.HasErrored)
-                    failedConfigs.Add(configPair.Key);
-                else
-                    successfulConfigs.Add(configPair.Key);
+                LogCompleted(new TestOutcome(
+                    Path, config, ConfigurationIndex + i, configState.HasErrored),
+                    Tests.Count);
+                i++;
+            }
+            return ConfigurationIndex + AllConfigs.Count;
+        }
+
+        /// <summary>
+        /// Runs all tests stored in this test manager.
+        /// </summary>
+        public void RunTests()
+        {
+            // First, get all configurations.
+            var allConfigs = GetAllConfigurations();
+
+            // Next, compute their count.
+            int totalConfigCount = 0;
+            foreach (var configPair in allConfigs)
+            {
+                totalConfigCount += configPair.Value.Count;
             }
 
-            return new TestResult(successfulConfigs, failedConfigs);
+            int i = 0;
+            // Finally, run all tests.
+            foreach (var testPair in Tests)
+            {
+                var testTuple = testPair.Value;
+                i = RunTest(
+                    testTuple.Item1, testTuple.Item2, testTuple.Item3,
+                    testPair.Key, allConfigs[testTuple.Item1], i);
+            }
         }
     }
 }

@@ -10,6 +10,8 @@ namespace CompareTest
 {
     public static class Program
     {
+        alias SectionTuple = Tuple<Section, Configuration, ExecutionState>;
+
         private string GetPlatformName()
         {
             var platform = Environment.OSVersion.Platform;
@@ -34,32 +36,35 @@ namespace CompareTest
             configOptions[TestManager.WorkingDirectoryKey] = Environment.CurrentDirectory;
             var config = new Configuration("default", configOptions);
 
-            var paths = options.SourcePaths;
-            for (int i = 0; i < paths.Length; i++)
-            {
-                var srcPath = paths[i];
-                var root = ReadTestDescription(srcPath, log);
-                var manager = new TestManager(config, log);
-                var result = manager.RunTest(root);
-                LogPercentage(!result.HasFailed, i, paths.Length, srcPath.Path, log);
-            }
+            var allTests = ReadAllTests(options.SourcePaths, log, config);
+            var manager = new TestManager(allTests, CreatePercentageLogger(log));
+            manager.RunTests();
         }
 
-        private void LogPercentage(bool Success, int i, int n, string Name, ConsoleLog Log)
+        private void(TestOutcome, int) CreatePercentageLogger(ConsoleLog Log)
         {
-            double percentage = 100.0 * (double)(i + 1) / (double)n;
-            string percentageStr = (string)percentage;
-            while (percentageStr.Length < 3)
-                percentageStr = " " + percentageStr;
-            if (!Success)
-                Log.Console.Write("[" + percentageStr + "%]", Log.ErrorStyle);
-            else
-                Log.Console.Write("[" + percentageStr + "%]", Log.MessageStyle);
-            Log.Console.Write(" ");
-            Log.Console.Write(Name);
-            Log.Console.WriteLine();
+            return void(TestOutcome outcome, int n) =>
+            {
+                double percentage = 100.0 * (double)(outcome.Index + 1) / (double)n;
+                string percentageStr = (string)(int)percentage;
+                while (percentageStr.Length < 3)
+                    percentageStr = " " + percentageStr;
+                if (outcome.HasFailed)
+                    Log.Console.Write("[" + percentageStr + "%]", Log.ErrorStyle);
+                else
+                    Log.Console.Write("[" + percentageStr + "%]", Log.MessageStyle);
+                Log.Console.Write(" ");
+                Log.Console.Write(outcome.Path.Path, Log.ContrastForegroundColor);
+                Log.Console.Write(" - ");
+                Log.Console.Write(outcome.Config.Name);
+                Log.Console.WriteLine();
+                return;
+            };
         }
 
+        /// <summary>
+        /// Reads a single test file description, specified by the given path.
+        /// </summary>
         public Section ReadTestDescription(PathIdentifier Path, ICompilerLog Log)
         {
             Section result = null;
@@ -85,6 +90,101 @@ namespace CompareTest
                 fs.Dispose();
             }
             return result;
+        }
+
+        /// <summary>
+        /// Reads a single subtest, as specified by the given command.
+        /// </summary>
+        private void ReadSubtest(
+            IStatement Command, ICompilerLog Log,
+            Configuration Config, ExecutionState State,
+            PathIdentifier BasePath,
+            Dictionary<PathIdentifier, SectionTuple> Results,
+            HashSet<string> ParsedPaths)
+        {
+            if (!(Command is CommandStatement))
+            {
+                Log.LogError(new LogEntry(
+                    "invalid subtest",
+                    "'" + Command + "' is not a valid subtest specification: " +
+                    "subtests should be encoded as a sequence of semicolon-delimited " +
+                    "paths.",
+                    Command.Location));
+                return;
+            }
+
+            var cmdStmt = (CommandStatement)Command;
+            var pathStr = cmdStmt.Command.Evaluate(Config, State).Trim(null);
+            ReadTestsRecursive(
+                new PathIdentifier(BasePath.Parent, pathStr),
+                Log, Config, State, Results, ParsedPaths);
+        }
+
+        /// <summary>
+        /// Reads the test description specified by the given path,
+        /// as well as all of its children.
+        /// </summary>
+        private void ReadTestsRecursive(
+            PathIdentifier Path, ICompilerLog Log,
+            Configuration Config, ExecutionState State,
+            Dictionary<PathIdentifier, SectionTuple> Results,
+            HashSet<string> ParsedPaths)
+        {
+            string absPath = Path.AbsolutePath.Path;
+            if (!ParsedPaths.Add(absPath))
+                // Looks like we have already parsed this file. Skip it.
+                return;
+
+            var sec = ReadTestDescription(Path, Log);
+            if (sec == null)
+                // Couldn't (properly) parse the test description.
+                // No shame in that.
+                return;
+
+            // Fork the parent execution state.
+            var secState = State.Fork();
+            // Run the 'init' section first.
+            var secInitStmt = sec.GetOptionalStatementSection(TestManager.InitializationSectionName);
+            // Execute that statement to obtain a configuration object for
+            // this section.
+            var secConfig = secInitStmt.Execute(Config, secState);
+
+            // Create a section tuple for this section, and add it to the
+            // results dictionary.
+            Results[Path] = new SectionTuple(sec, secConfig, secState);
+
+            // Then try to find subtests in the 'tests' section.
+            if (sec.Sections.TryGetValue(TestManager.TestsSectionName, &Section subtests))
+            {
+                foreach (var item in subtests.Statements)
+                {
+                    // Parse all subtest "command statements"
+                    ReadSubtest(
+                        item, Log, secConfig, secState,
+                        Path, Results, ParsedPaths);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Reads all tests, as specified by the given sequence of paths.
+        /// These tests are returned as a dictionary that maps path identifiers
+        /// to tuples, which consist of a section,
+        /// said section's configuration and its execution state.
+        /// </summary>
+        public IReadOnlyDictionary<PathIdentifier, SectionTuple> ReadAllTests(
+            [PathIdentifier] Paths, ICompilerLog Log,
+            Configuration Config)
+        {
+            var results = new Dictionary<PathIdentifier, SectionTuple>();
+            var visitedPaths = new HashSet<string>();
+            var state = new ExecutionState(
+                Config.Variables[TestManager.WorkingDirectoryKey], Log);
+            foreach (var item in Paths)
+            {
+                ReadTestsRecursive(item, Log, Config, state, results, visitedPaths);
+            }
+            return results;
         }
     }
 }

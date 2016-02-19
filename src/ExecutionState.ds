@@ -87,8 +87,7 @@ namespace CompareTest
                 string err = process.StandardError.ReadToEnd();
                 if (!string.IsNullOrWhiteSpace(err))
                 {
-                    var node = new MarkupNode(NodeConstants.ParagraphNodeType, err);
-                    Log.LogMessage(new LogEntry("standard error", node));
+                    Console.Write(err);
                 }
             }
 

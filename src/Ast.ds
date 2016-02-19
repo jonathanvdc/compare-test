@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using Flame.Compiler;
+// alias SourceLocation = Flame.Compiler.SourceLocation;
+// alias CompilerLogExtensions = Flame.Compiler.CompilerLogExtensions;
 
 namespace CompareTest
 {
@@ -9,6 +12,11 @@ namespace CompareTest
     /// </summary>
     public interface IExpression
     {
+        /// <summary>
+        /// Gets this test expression's source location.
+        /// </summary>
+        SourceLocation Location { get; }
+
         /// <summary>
         /// Evaluates this test expression for the given configuration.
         /// </summary>
@@ -21,6 +29,11 @@ namespace CompareTest
     /// </summary>
     public interface IStatement
     {
+        /// <summary>
+        /// Gets this test expression's source location.
+        /// </summary>
+        SourceLocation Location { get; }
+
         /// <summary>
         /// Executes this statement. A new configuration is returned, which
         /// may or may not be the old configuration.
@@ -39,6 +52,11 @@ namespace CompareTest
         /// Gets this token-expression's single token.
         /// </summary>
         public Token Contents { get; private set; }
+
+        /// <summary>
+        /// Gets this test expression's source location.
+        /// </summary>
+        public SourceLocation Location { get { return Contents.Location; } }
 
         /// <summary>
         /// Evaluates this test expression for the given configuration.
@@ -65,6 +83,11 @@ namespace CompareTest
         /// Gets this replacement-expression's key token.
         /// </summary>
         public Token Identifier { get; private set; }
+
+        /// <summary>
+        /// Gets this test expression's source location.
+        /// </summary>
+        public SourceLocation Location { get { return Identifier.Location; } }
 
         /// <summary>
         /// Evaluates this test expression for the given configuration.
@@ -94,6 +117,11 @@ namespace CompareTest
         /// </summary>
         public IExpression Command { get; private set; }
 
+        /// <summary>
+        /// Gets this test expression's source location.
+        /// </summary>
+        public SourceLocation Location { get { return Command.Location; } }
+
         public string Evaluate(Configuration Config, ExecutionState State)
         {
             string commandStr = Command.Evaluate(Config, State);
@@ -117,6 +145,11 @@ namespace CompareTest
         public IExpression Right { get; private set; }
 
         /// <summary>
+        /// Gets this test expression's source location.
+        /// </summary>
+        public SourceLocation Location { get { return CompilerLogExtensions.Concat(Left.Location, Right.Location); } }
+
+        /// <summary>
         /// Evaluates this test expression for the given configuration.
         /// </summary>
         public string Evaluate(Configuration Config, ExecutionState State)
@@ -135,6 +168,11 @@ namespace CompareTest
     /// </summary>
     public static class EmptyExpression : IExpression
     {
+        /// <summary>
+        /// Gets this test expression's source location.
+        /// </summary>
+        public SourceLocation Location { get { return null; } }
+
         public string Evaluate(Configuration Config, ExecutionState State)
         {
             return "";
@@ -159,6 +197,11 @@ namespace CompareTest
         /// statement should execute.
         /// </summary>
         public IExpression Command { get; private set; }
+
+        /// <summary>
+        /// Gets this test expression's source location.
+        /// </summary>
+        public SourceLocation Location { get { return Command.Location; } }
 
         public Configuration Execute(Configuration Config, ExecutionState State)
         {
@@ -193,6 +236,11 @@ namespace CompareTest
         /// </summary>
         public IExpression Value { get; private set; }
 
+        /// <summary>
+        /// Gets this test expression's source location.
+        /// </summary>
+        public SourceLocation Location { get { return CompilerLogExtensions.Concat(Identifier.Location, Value.Location); } }
+
         public Configuration Execute(Configuration Config, ExecutionState State)
         {
             string evalValue = Value.Evaluate(Config, State);
@@ -221,6 +269,11 @@ namespace CompareTest
         /// Gets the second statement to execute.
         /// </summary>
         public IStatement Second { get; private set; }
+
+        /// <summary>
+        /// Gets this test expression's source location.
+        /// </summary>
+        public SourceLocation Location { get { return CompilerLogExtensions.Concat(First.Location, Second.Location); } }
 
         public Configuration Execute(Configuration Config, ExecutionState State)
         {
@@ -252,6 +305,11 @@ namespace CompareTest
     /// </summary>
     public static class EmptyStatement : IStatement
     {
+        /// <summary>
+        /// Gets this test expression's source location.
+        /// </summary>
+        public SourceLocation Location { get { return null; } }
+
         public Configuration Execute(Configuration Config, ExecutionState State)
         {
             return Config;
