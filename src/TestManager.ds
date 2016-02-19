@@ -4,6 +4,7 @@ using Flame.Compiler;
 using Flame.Front;
 using Flame.Front.Cli;
 using Flame.Front.Options;
+using Pixie;
 
 namespace CompareTest
 {
@@ -51,6 +52,7 @@ namespace CompareTest
         public const string InitializationSectionName = "init";
         public const string TestsSectionName = "tests";
         public const string WorkingDirectoryKey = "working-directory";
+        public const string ResultKey = "return";
 
         public const this(
             set IReadOnlyDictionary<PathIdentifier, SectionTuple> Tests,
@@ -103,10 +105,21 @@ namespace CompareTest
             return results;
         }
 
+        private MarkupNode CreateConfigOutputRemark(string Output, Configuration Config)
+        {
+            return new MarkupNode(NodeConstants.RemarksNodeType, new MarkupNode[]
+            {
+                new MarkupNode(NodeConstants.TextNodeType, "output from configuration '"),
+                new MarkupNode(NodeConstants.BrightNodeType, Config.Name),
+                new MarkupNode(NodeConstants.TextNodeType, "':"),
+                new MarkupNode(NodeConstants.ParagraphNodeType, Output)
+            });
+        }
+
         /// <summary>
-        /// Runs a single test. The new total configuration index is returned.
+        /// Runs a single test.
         /// </summary>
-        private int RunTest(
+        private void RunTest(
             Section Root, Configuration Config,
             ExecutionState State, PathIdentifier Path,
             ConfigDict AllConfigs, int ConfigurationIndex,
@@ -115,6 +128,9 @@ namespace CompareTest
             // The 'init' section already ran by this time.
             var rootStmt = Root.GetOptionalStatementSection(RunSectionName);
             var buildStmt = Root.GetOptionalStatementSection(BuildSectionName);
+
+            Configuration resultConfig = null;
+            string result = null;
 
             int i = 0;
             foreach (var configPair in AllConfigs)
@@ -128,14 +144,32 @@ namespace CompareTest
                 // ...build...
                 config = buildStmt.Execute(config, configState);
                 // ...and run!
-                rootStmt.Execute(config, configState);
+                config = rootStmt.Execute(config, configState);
+
+                if (config.Variables.TryGetValue(ResultKey, &string newResult))
+                {
+                    if (result == null)
+                    {
+                        result = newResult;
+                        resultConfig = config;
+                    }
+                    else if (result != newResult)
+                    {
+                        configState.ExitCode = 1;
+                        var nodes = new List<MarkupNode>();
+                        nodes.Add(CreateConfigOutputRemark(result, resultConfig));
+                        nodes.Add(CreateConfigOutputRemark(newResult, config));
+                        configState.Log.LogError(new LogEntry(
+                            "inconsistent results",
+                            new MarkupNode("entry", nodes)));
+                    }
+                }
 
                 LogCompleted(new TestOutcome(
                     Path, config, ConfigurationIndex + i, configState.HasErrored),
                     TotalConfigCount);
                 i++;
             }
-            return ConfigurationIndex + AllConfigs.Count;
         }
 
         /// <summary>
@@ -158,9 +192,10 @@ namespace CompareTest
             foreach (var testPair in Tests)
             {
                 var testTuple = testPair.Value;
-                i = RunTest(
+                RunTest(
                     testTuple.Item1, testTuple.Item2, testTuple.Item3,
                     testPair.Key, allConfigs[testTuple.Item1], i, totalConfigCount);
+                i += allConfigs[testTuple.Item1].Count;
             }
         }
     }
