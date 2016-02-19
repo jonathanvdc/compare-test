@@ -5,5 +5,5 @@ run
 
 build
 {
-    dsc ../src/compare-test.dsproj -platform clr;
+    dsc ../src/compare-test.dsproj -platform clr -fsyntax-only;
 }
