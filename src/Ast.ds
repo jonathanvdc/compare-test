@@ -56,7 +56,17 @@ namespace CompareTest
         /// <summary>
         /// Gets this test expression's source location.
         /// </summary>
-        public SourceLocation Location { get { return Contents.Location; } }
+        public SourceLocation Location
+        {
+            get
+            {
+                if (TokenHelpers.IsTrivia(Contents.Type))
+                    // Don't include leading and trailing trivia in diagnostics.
+                    return null;
+                else
+                    return Contents.Location;
+            }
+        }
 
         /// <summary>
         /// Evaluates this test expression for the given configuration.
@@ -125,10 +135,20 @@ namespace CompareTest
         public string Evaluate(Configuration Config, ExecutionState State)
         {
             string commandStr = Command.Evaluate(Config, State);
-            if (!State.HasErrored)
-                return State.RunProcess(commandStr);
-            else
+            if (State.HasErrored)
                 return "";
+
+            string result = State.RunProcess(commandStr);
+            if (State.HasErrored)
+            {
+                State.Log.LogError(new LogEntry(
+                    "external error in '" + commandStr.Trim(null) + "'",
+                    result,
+                    Location));
+                return "";
+            }
+
+            return result;
         }
 
         public override string ToString()
@@ -206,10 +226,21 @@ namespace CompareTest
         public Configuration Execute(Configuration Config, ExecutionState State)
         {
             string commandStr = Command.Evaluate(Config, State);
-            if (!State.HasErrored)
+
+            if (State.HasErrored)
+                return Config;
+
+            string result = State.RunProcess(commandStr);
+            if (State.HasErrored)
             {
-                State.Write(State.RunProcess(commandStr));
+                State.Log.LogError(new LogEntry(
+                    "external error in '" + commandStr.Trim(null) + "'",
+                    result,
+                    Location));
             }
+
+            State.Write(result);
+
             return Config;
         }
 
