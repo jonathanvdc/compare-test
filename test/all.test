@@ -2,5 +2,6 @@
 tests
 {
     build.test;
+    compare.test;
     globals.test;
 }

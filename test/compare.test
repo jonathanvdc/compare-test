@@ -1,0 +1,11 @@
+
+run
+{
+    return = @(echo $Value);
+}
+
+init
+{
+    Value = hi;
+    return = @(echo $Value);
+}
