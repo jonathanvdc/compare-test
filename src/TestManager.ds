@@ -129,8 +129,13 @@ namespace CompareTest
             var rootStmt = Root.GetOptionalStatementSection(RunSectionName);
             var buildStmt = Root.GetOptionalStatementSection(BuildSectionName);
 
-            Configuration resultConfig = null;
-            string result = null;
+            Configuration resultConfig = Config;
+            string result;
+            if (!Config.Variables.TryGetValue(ResultKey, &result))
+            {
+                result = null;
+                resultConfig = null;
+            }
 
             int i = 0;
             foreach (var configPair in AllConfigs)
