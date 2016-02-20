@@ -237,6 +237,7 @@ namespace CompareTest
                     "external error in '" + commandStr.Trim(null) + "'",
                     result,
                     Location));
+                return Config;
             }
 
             State.Write(result);
