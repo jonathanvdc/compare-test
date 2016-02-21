@@ -1,0 +1,12 @@
+// Verifies that variables have a default value that corresponds to their
+// identifier.
+
+run
+{
+    return = $echo;
+}
+
+init
+{
+    return = echo;
+}

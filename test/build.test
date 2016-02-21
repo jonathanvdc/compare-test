@@ -1,9 +1,0 @@
-run
-{
-    // Basically do nothing here.
-}
-
-build
-{
-    dsc ../src/compare-test.dsproj -platform clr -fsyntax-only;
-}

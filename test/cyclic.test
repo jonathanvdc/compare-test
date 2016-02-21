@@ -1,0 +1,7 @@
+// Ensures that cyclic subtests are dealt with properly.
+
+test
+{
+    // Includes itself.
+    cyclic.test;
+}

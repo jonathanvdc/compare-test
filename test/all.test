@@ -1,7 +1,8 @@
 
 tests
 {
-    build.test;
+    autodefine.test;
     compare.test;
+    cyclic.test;
     globals.test;
 }
