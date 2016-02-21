@@ -1,2 +1,2 @@
 # compare-test
-A command-line program test program.
+A command-line testing program.
