@@ -117,9 +117,10 @@ namespace CompareTest
         }
 
         /// <summary>
-        /// Runs a single test.
+        /// Runs a single test. A list containing all test outcomes for this
+        /// test is returned.
         /// </summary>
-        private void RunTest(
+        private IReadOnlyList<TestOutcome> RunTest(
             Section Root, Configuration Config,
             ExecutionState State, PathIdentifier Path,
             ConfigDict AllConfigs, int ConfigurationIndex,
@@ -136,6 +137,8 @@ namespace CompareTest
                 result = null;
                 resultConfig = null;
             }
+
+            var outcomes = new List<TestOutcome>();
 
             int i = 0;
             foreach (var configPair in AllConfigs)
@@ -170,17 +173,21 @@ namespace CompareTest
                     }
                 }
 
-                LogCompleted(new TestOutcome(
-                    Path, config, ConfigurationIndex + i, configState.HasErrored),
-                    TotalConfigCount);
+                var configOutcome = new TestOutcome(
+                    Path, config, ConfigurationIndex + i, configState.HasErrored);
+                LogCompleted(configOutcome, TotalConfigCount);
+                outcomes.Add(configOutcome);
                 i++;
             }
+
+            return outcomes;
         }
 
         /// <summary>
-        /// Runs all tests stored in this test manager.
+        /// Runs all tests stored in this test manager. All test outcomes are
+        /// stored in a list, which is returned.
         /// </summary>
-        public void RunTests()
+        public IReadOnlyList<TestOutcome> RunTests()
         {
             // First, get all configurations.
             var allConfigs = GetAllConfigurations();
@@ -192,16 +199,20 @@ namespace CompareTest
                 totalConfigCount += configPair.Value.Count;
             }
 
+            var allOutcomes = new List<TestOutcome>();
+
             int i = 0;
             // Finally, run all tests.
             foreach (var testPair in Tests)
             {
                 var testTuple = testPair.Value;
-                RunTest(
+                allOutcomes.AddRange(RunTest(
                     testTuple.Item1, testTuple.Item2, testTuple.Item3,
-                    testPair.Key, allConfigs[testTuple.Item1], i, totalConfigCount);
+                    testPair.Key, allConfigs[testTuple.Item1], i, totalConfigCount));
                 i += allConfigs[testTuple.Item1].Count;
             }
+
+            return allOutcomes;
         }
     }
 }

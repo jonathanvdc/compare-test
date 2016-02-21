@@ -38,7 +38,45 @@ namespace CompareTest
 
             var allTests = ReadAllTests(options.SourcePaths, log, config);
             var manager = new TestManager(allTests, CreatePercentageLogger(log));
-            manager.RunTests();
+            var outcomes = manager.RunTests();
+            var failures = FilterFailures(outcomes);
+            log.Console.Write("Ran ");
+            log.Console.Write(ToCountString(outcomes.Count, "test configuration"), log.ContrastForegroundColor);
+            if (failures.Count == 0)
+            {
+                log.Console.Write(", all of which were ");
+                log.Console.Write("successful", log.MessageStyle);
+                log.Console.Write(".");
+                log.Console.WriteLine();
+            }
+            else
+            {
+                log.Console.Write(". Found ");
+                log.Console.Write(ToCountString(failures.Count, "failure"), log.ErrorStyle)
+                log.Console.Write(".");
+                log.Console.WriteLine();
+                Environment.Exit(1);
+            }
+        }
+
+        private string ToCountString(int Count, string Type)
+        {
+            string prefix = Count + " " + Type;
+            if (Count == 1)
+                return prefix;
+            else
+                return prefix + "s";
+        }
+
+        private IReadOnlyList<TestOutcome> FilterFailures(IReadOnlyList<TestOutcome> Outcomes)
+        {
+            var results = new List<TestOutcome>();
+            foreach (var item in Outcomes)
+            {
+                if (item.HasFailed)
+                    results.Add(item);
+            }
+            return results;
         }
 
         private void(TestOutcome, int) CreatePercentageLogger(ConsoleLog Log)
