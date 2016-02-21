@@ -12,15 +12,36 @@ namespace CompareTest
     {
         alias SectionTuple = Tuple<Section, Configuration, ExecutionState>;
 
+        public const string UnixPlatformName = "unix";
+        public const string MacOSXPlatformName = "osx";
+        public const string WindowsPlatformName = "windows";
+        public const string PlatformKey = "platform";
+        public const string NetRuntimeKey = "net-runtime";
+
         private string GetPlatformName()
         {
             var platform = Environment.OSVersion.Platform;
             if (platform == PlatformID.Unix)
-                return "unix";
+                return UnixPlatformName;
             else if (platform == PlatformID.MacOSX)
-                return "osx";
+                return MacOSXPlatformName;
             else
-                return "windows";
+                return WindowsPlatformName;
+        }
+
+        private Configuration GetDefaultConfiguration()
+        {
+            var configOptions = new Dictionary<string, string>();
+            string platform = GetPlatformName();
+            configOptions[PlatformKey] = platform;
+            if (platform == WindowsPlatformName)
+                // No need to explicitly name the runtime on Windows.
+                configOptions[NetRuntimeKey] = "";
+            else
+                // Explicitly use 'mono' on other platforms.
+                configOptions[NetRuntimeKey] = "mono";
+            configOptions[TestManager.WorkingDirectoryKey] = Environment.CurrentDirectory;
+            return new Configuration("default", configOptions);
         }
 
         public void Main(string[] Args)
@@ -31,11 +52,7 @@ namespace CompareTest
             var log = new ConsoleLog(ConsoleEnvironment.AcquireConsole(options), options);
             var filtLog = new FilteredLog(options.GetLogFilter(), log);
 
-            var configOptions = new Dictionary<string, string>();
-            configOptions["platform"] = GetPlatformName();
-            configOptions["net-runtime"] = "mono";
-            configOptions[TestManager.WorkingDirectoryKey] = Environment.CurrentDirectory;
-            var config = new Configuration("default", configOptions);
+            var config = GetDefaultConfiguration();
 
             var allTests = ReadAllTests(options.SourcePaths, filtLog, config);
             var manager = new TestManager(allTests, CreatePercentageLogger(log));
