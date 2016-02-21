@@ -2,6 +2,7 @@ using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
+using System.IO;
 using Flame.Compiler;
 using Pixie;
 
@@ -74,8 +75,12 @@ namespace CompareTest
                     "Cannot start a process if a previously executed " +
                     "process did not terminate successfully.");
 
+            string fixedName = Name.Replace(
+                Path.AltDirectorySeparatorChar,
+                Path.DirectorySeparatorChar);
+
             var process = new Process();
-            process.StartInfo.FileName = Name;
+            process.StartInfo.FileName = fixedName;
             process.StartInfo.Arguments = Arguments;
             process.StartInfo.UseShellExecute = false;
             process.StartInfo.RedirectStandardOutput = true;
