@@ -29,6 +29,7 @@ namespace CompareTest
             var optParser = StringOptionParser.CreateDefault();
             var options = BuildArguments.Parse(optParser, Args);
             var log = new ConsoleLog(ConsoleEnvironment.AcquireConsole(options), options);
+            var filtLog = new FilteredLog(options.GetLogFilter(), log);
 
             var configOptions = new Dictionary<string, string>();
             configOptions["platform"] = GetPlatformName();
@@ -36,18 +37,28 @@ namespace CompareTest
             configOptions[TestManager.WorkingDirectoryKey] = Environment.CurrentDirectory;
             var config = new Configuration("default", configOptions);
 
-            var allTests = ReadAllTests(options.SourcePaths, log, config);
+            var allTests = ReadAllTests(options.SourcePaths, filtLog, config);
             var manager = new TestManager(allTests, CreatePercentageLogger(log));
             var outcomes = manager.RunTests();
             var failures = FilterFailures(outcomes);
             log.Console.Write("Ran ");
             log.Console.Write(ToCountString(outcomes.Count, "test configuration"), log.ContrastForegroundColor);
+
+            int exitCode = 0;
             if (failures.Count == 0)
             {
                 log.Console.Write(", all of which were ");
                 log.Console.Write("successful", log.MessageStyle);
                 log.Console.Write(".");
                 log.Console.WriteLine();
+                if (filtLog.ErrorCount > 0)
+                {
+                    log.Console.Write("Encountered some ");
+                    log.Console.Write("internal errors", log.ErrorStyle);
+                    log.Console.Write(" on the way, though.");
+                    log.Console.WriteLine();
+                    exitCode = 1;
+                }
             }
             else
             {
@@ -55,8 +66,10 @@ namespace CompareTest
                 log.Console.Write(ToCountString(failures.Count, "failure"), log.ErrorStyle)
                 log.Console.Write(".");
                 log.Console.WriteLine();
-                Environment.Exit(1);
+                exitCode = 1;
             }
+
+            Environment.Exit(exitCode);
         }
 
         private string ToCountString(int Count, string Type)
@@ -106,9 +119,10 @@ namespace CompareTest
         public Section ReadTestDescription(PathIdentifier Path, ICompilerLog Log)
         {
             Section result = null;
-            var fs = new FileStream(Path.Path, FileMode.Open, FileAccess.Read);
+            FileStream fs = null;
             try
             {
+                fs = new FileStream(Path.Path, FileMode.Open, FileAccess.Read);
                 var reader = new StreamReader(fs);
                 try
                 {
@@ -123,9 +137,14 @@ namespace CompareTest
                     reader.Dispose();
                 }
             }
+            catch (FileNotFoundException ex)
+            {
+                Log.LogError(new LogEntry("file not found", "the file at '" + Path + "' could not be found."));
+            }
             finally
             {
-                fs.Dispose();
+                if (fs != null)
+                    fs.Dispose();
             }
             return result;
         }
