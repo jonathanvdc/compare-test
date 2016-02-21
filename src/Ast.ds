@@ -104,7 +104,11 @@ namespace CompareTest
         /// </summary>
         public string Evaluate(Configuration Config, ExecutionState State)
         {
-            return Config.Variables[Identifier.Contents];
+            string key = Identifier.Contents;
+            if (Config.Variables.TryGetValue(key, &string result))
+                return result;
+            else
+                return key;
         }
 
         public override string ToString()
