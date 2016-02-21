@@ -75,17 +75,28 @@ namespace CompareTest
                     "Cannot start a process if a previously executed " +
                     "process did not terminate successfully.");
 
-            string fixedName = Name.Replace(
-                Path.AltDirectorySeparatorChar,
-                Path.DirectorySeparatorChar);
+            string fixedName;
+            if (Name.IndexOf(Path.DirectorySeparatorChar) >= 0 ||
+                Name.IndexOf(Path.AltDirectorySeparatorChar) >= 0)
+            {
+                fixedName = Path.Combine(WorkingDirectory, Name);
+            }
+            else
+            {
+                fixedName = Name;
+            }
+
+            Log.LogEvent(new LogEntry(
+                "Status",
+                "starting process '" + fixedName + " " + Arguments + "'."));
 
             var process = new Process();
+            process.StartInfo.WorkingDirectory = WorkingDirectory;
             process.StartInfo.FileName = fixedName;
             process.StartInfo.Arguments = Arguments;
             process.StartInfo.UseShellExecute = false;
             process.StartInfo.RedirectStandardOutput = true;
             process.StartInfo.RedirectStandardError = true;
-            process.StartInfo.WorkingDirectory = WorkingDirectory;
 
             string output;
             try
