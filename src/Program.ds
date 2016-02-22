@@ -216,7 +216,7 @@ namespace CompareTest
                 return;
 
             // Fork the parent execution state.
-            var secState = State.Fork(Path.Parent.AbsolutePath.Path);
+            var secState = State.Fork(Path.AbsolutePath.Parent.Path);
             // Run the 'init' section first.
             var secInitStmt = sec.GetOptionalStatementSection(TestManager.InitializationSectionName);
             // Execute that statement to obtain a configuration object for
