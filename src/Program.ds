@@ -158,6 +158,10 @@ namespace CompareTest
             {
                 Log.LogError(new LogEntry("file not found", "the file at '" + Path + "' could not be found."));
             }
+            catch (DirectoryNotFoundException ex)
+            {
+                Log.LogError(new LogEntry("directory not found", "could not find a part of the path '" + Path + "'."));
+            }
             finally
             {
                 if (fs != null)
