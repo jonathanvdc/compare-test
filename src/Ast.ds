@@ -279,9 +279,18 @@ namespace CompareTest
         /// </summary>
         public SourceLocation Location { get { return CompilerLogExtensions.Concat(Identifier.Location, Value.Location); } }
 
+        /// <summary>
+        /// Normalizes the given string by removing all carriage returns, and
+        /// then trimming whitespace on both ends.
+        /// </summary>
+        private string Normalize(string Value)
+        {
+            return Value.Replace("\r", "").Trim(null);
+        }
+
         public Configuration Execute(Configuration Config, ExecutionState State)
         {
-            string evalValue = Value.Evaluate(Config, State).Trim(null);
+            string evalValue = Normalize(Value.Evaluate(Config, State));
             return Config.WithVariable(Identifier.Contents, evalValue);
         }
 
