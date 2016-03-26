@@ -18,6 +18,7 @@ namespace CompareTest
         public const string PlatformKey = "platform";
         public const string NetRuntimeKey = "net-runtime";
         public const string ReadFileKey = "cat";
+        public const string MakeDirectoryRecursiveKey = "mkdir-rec";
 
         private string GetPlatformName()
         {
@@ -40,12 +41,14 @@ namespace CompareTest
                 // No need to explicitly name the runtime on Windows.
                 configOptions[NetRuntimeKey] = "";
                 configOptions[ReadFileKey] = "type";
+                configOptions[MakeDirectoryRecursiveKey] = "md";
             }
             else
             {
                 // Explicitly use 'mono' on other platforms.
                 configOptions[NetRuntimeKey] = "mono";
                 configOptions[ReadFileKey] = "cat";
+                configOptions[MakeDirectoryRecursiveKey] = "mkdir -p";
             }
             configOptions[TestManager.WorkingDirectoryKey] = Environment.CurrentDirectory;
             return new Configuration("default", configOptions);

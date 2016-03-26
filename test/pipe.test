@@ -1,7 +1,7 @@
 
 run
 {
-    $mkdir -p tmp;
+    $mkdir-rec tmp;
     $echo hi > tmp/hi.txt;
     return = @($cat tmp/hi.txt);
 }

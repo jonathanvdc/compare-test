@@ -198,7 +198,7 @@ namespace CompareTest
                 Log.LogError(new LogEntry(
                     "missing directory",
                     "'" + locPath + "' cannot not be created, because its parent " +
-                    "directory does not exist.",
+                    "directory does not exist. Consider using '$mkdir-rec' to create a directory tree.",
                     Location));
                 ExitCode = 1;
             }
