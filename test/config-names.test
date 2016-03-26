@@ -1,0 +1,15 @@
+
+run
+{
+    return = $config;
+}
+
+configs
+{
+    A { }
+}
+
+init
+{
+    return = A;
+}

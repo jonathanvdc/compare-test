@@ -3,6 +3,7 @@ tests
 {
     autodefine.test;
     compare.test;
+    config-names.test;
     cyclic.test;
     globals.test;
     pipe.test;
