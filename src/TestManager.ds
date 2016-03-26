@@ -51,6 +51,7 @@ namespace CompareTest
         public const string ConfigurationsSectionName = "configs";
         public const string InitializationSectionName = "init";
         public const string TestsSectionName = "tests";
+        public const string ConfigurationNameKey = "config";
         public const string WorkingDirectoryKey = "working-directory";
         public const string ResultKey = "return";
 
@@ -145,8 +146,11 @@ namespace CompareTest
             {
                 var configState = State.Fork();
 
+                var configVals = new Dictionary<string, string>();
+                configVals[ConfigurationNameKey] = configPair.Key;
+
                 // Create a subconfiguration...
-                var config = Config.CreateSubconfiguration(configPair.Key);
+                var config = Config.CreateSubconfiguration(configPair.Key, configVals);
                 // ...configure...
                 config = configPair.Value.Execute(config, configState);
                 // ...build...
