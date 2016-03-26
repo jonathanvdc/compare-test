@@ -13,6 +13,7 @@ namespace CompareTest
         {
             this.Source = Document.Source;
             this.srcPos = 0;
+
             this.singleCharTokens = new Dictionary<string, TokenType>();
             this.singleCharTokens["$"] = TokenType.Dollar;
             this.singleCharTokens["@"] = TokenType.At;
@@ -22,6 +23,12 @@ namespace CompareTest
             this.singleCharTokens["{"] = TokenType.LBrace;
             this.singleCharTokens["}"] = TokenType.RBrace;
             this.singleCharTokens[";"] = TokenType.Semicolon;
+            this.singleCharTokens["|"] = TokenType.Bar;
+            this.singleCharTokens[">"] = TokenType.GreaterThan;
+            this.singleCharTokens["<"] = TokenType.LessThan;
+
+            this.doubleCharTokens = new Dictionary<string, TokenType>();
+            this.doubleCharTokens["|>"] = TokenType.ForwardPipe;
         }
 
         /// <summary>
@@ -38,6 +45,9 @@ namespace CompareTest
 
         // A dictionary that maps single-character strings to their token types.
         private Dictionary<string, TokenType> singleCharTokens;
+
+        // A dictionary that maps double-character strings to their token types.
+        private Dictionary<string, TokenType> doubleCharTokens;
 
         /// <summary>
         /// Gets the current position in the source stream.
@@ -104,6 +114,9 @@ namespace CompareTest
                 return SliceToken(TokenType.EndOfFile, 0);
 
             TokenType tokTy;
+            if (doubleCharTokens.TryGetValue(PeekString(2), &tokTy))
+                return SliceToken(tokTy, 2);
+
             if (singleCharTokens.TryGetValue(PeekString(1), &tokTy))
                 return SliceToken(tokTy, 1);
 

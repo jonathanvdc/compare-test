@@ -8,7 +8,24 @@ using Flame.Compiler;
 namespace CompareTest
 {
     /// <summary>
-    /// A test "expression," which can be evaluated for a given configuration.
+    /// A test command, which can execute arbitrary programs. An output is always
+    /// returned.
+    /// </summary>
+    public interface ICommand
+    {
+        /// <summary>
+        /// Gets this test command's source location.
+        /// </summary>
+        SourceLocation Location { get; }
+
+        /// <summary>
+        /// Executes this test cpmmand for the given configuration.
+        /// </summary>
+        string Evaluate(Configuration Config, ExecutionState State);
+    }
+
+    /// <summary>
+    /// A test expression, which can be evaluated for a given configuration.
     /// </summary>
     public interface IExpression
     {
@@ -24,7 +41,7 @@ namespace CompareTest
     }
 
     /// <summary>
-    /// A test "statement," which can change the configuration, or execute
+    /// A test statement, which can change the configuration, or execute
     /// arbitrary programs.
     /// </summary>
     public interface IStatement
@@ -39,6 +56,208 @@ namespace CompareTest
         /// may or may not be the old configuration.
         /// </summary>
         Configuration Execute(Configuration Config, ExecutionState State);
+    }
+
+    /// <summary>
+    /// A command that runs a program.
+    /// </summary>
+    public abstract class InvokeProgramCommandBase : ICommand
+    {
+        public const this(set IExpression ProgramArgs);
+
+        /// <summary>
+        /// Gets an expression that describes the command's program and arguments.
+        /// </summary>
+        public IExpression ProgramArgs { get; private set; }
+
+        /// <summary>
+        /// Gets this test expression's source location.
+        /// </summary>
+        public abstract override SourceLocation Location { get; }
+
+        /// <summary>
+        /// Evaluates this command's input, if any.
+        /// </summary>
+        protected abstract string EvaluateInput(Configuration Config, ExecutionState State);
+
+        /// <summary>
+        /// Produces a string representation of this command.
+        /// </summary>
+        public abstract override string ToString();
+
+        public string Evaluate(Configuration Config, ExecutionState State)
+        {
+            string input = EvaluateInput(Config, State);
+            if (State.HasErrored)
+                return "";
+
+            string commandStr = ProgramArgs.Evaluate(Config, State);
+            if (State.HasErrored)
+                return "";
+
+            string result = State.RunProcess(commandStr, input);
+            if (State.HasErrored)
+            {
+                State.Log.LogError(new LogEntry(
+                    "external error in '" + commandStr.Trim(null) + "'",
+                    result,
+                    Location));
+                return "";
+            }
+
+            return result;
+        }
+    }
+
+    /// <summary>
+    /// A command that runs a program.
+    /// </summary>
+    public abstract class InvokeProgramCommand : InvokeProgramCommandBase
+    {
+        public const this(IExpression ProgramArgs)
+            : base(ProgramArgs);
+
+        /// <summary>
+        /// Gets this test expression's source location.
+        /// </summary>
+        public override SourceLocation Location { get { return ProgramArgs.Location; } }
+
+        protected override string EvaluateInput(Configuration Config, ExecutionState State)
+        {
+            return "";
+        }
+
+        public override string ToString()
+        {
+            return ProgramArgs.ToString();
+        }
+    }
+
+    /// <summary>
+    /// A command that runs a command with a specific input string.
+    /// </summary>
+    public class InvokeProgramWithInputCommand : InvokeProgramCommandBase
+    {
+        public const this(
+            set IExpression InputExpression, set Token PipeToken,
+            IExpression ProgramArgs)
+            : base(ProgramArgs);
+
+        /// <summary>
+        /// Gets the expression that provides this command's input.
+        /// </summary>
+        public IExpression InputExpression { get; private set; }
+
+        /// <summary>
+        /// Gets the pipe token.
+        /// </summary>
+        public Token PipeToken { get; private set; }
+
+        public override SourceLocation Location
+        {
+            get { return PipeToken.Location; }
+        }
+
+        protected override string EvaluateInput(Configuration Config, ExecutionState State)
+        {
+            return InputExpression.Evaluate(Config, State);
+        }
+
+        public override string ToString()
+        {
+            return InputExpression.ToString() + PipeToken.Contents + ProgramArgs.ToString();
+        }
+    }
+
+    /// <summary>
+    /// A command that runs a command, and then pipes the result to a program.
+    /// </summary>
+    public class PipeToProgramCommand : InvokeProgramCommandBase
+    {
+        public const this(
+            set ICommand InputCommand, set Token PipeToken,
+            IExpression ProgramArgs)
+            : base(ProgramArgs);
+
+        /// <summary>
+        /// Gets the command that provides this command's input.
+        /// </summary>
+        public ICommand InputCommand { get; private set; }
+
+        /// <summary>
+        /// Gets the pipe token.
+        /// </summary>
+        public Token PipeToken { get; private set; }
+
+        public override SourceLocation Location
+        {
+            get { return PipeToken.Location; }
+        }
+
+        protected override string EvaluateInput(Configuration Config, ExecutionState State)
+        {
+            return InputCommand.Evaluate(Config, State);
+        }
+
+        public override string ToString()
+        {
+            return InputCommand.ToString() + PipeToken.Contents + ProgramArgs.ToString();
+        }
+    }
+
+    /// <summary>
+    /// A command that executes an inner command, and pipes the output to
+    /// a file. An empty string is then given as output.
+    /// </summary>
+    public class PipeToFileCommand : ICommand
+    {
+        public const this(
+            set ICommand InnerCommand, set Token GreaterThanToken,
+            set IExpression FileName);
+
+        /// <summary>
+        /// Gets this command's inner command.
+        /// </summary>
+        public ICommand InnerCommand { get; private set; }
+
+        /// <summary>
+        /// Gets this command's greater-than token.
+        /// </summary>
+        public Token GreaterThanToken { get; private set; }
+
+        /// <summary>
+        /// Gets the file name expression to pipe output to.
+        /// </summary>
+        public IExpression FileName { get; private set; }
+
+        public SourceLocation Location
+        {
+            get
+            {
+                return InnerCommand.Location
+                    .Concat(GreaterThanToken.Location)
+                    .Concat(FileName.Location);
+            }
+        }
+
+        public string Evaluate(Configuration Config, ExecutionState State)
+        {
+            string result = InnerCommand.Evaluate(Config, State);
+            if (State.HasErrored)
+                return "";
+
+            string path = FileName.Evaluate(Config, State).Trim(null);
+            if (State.HasErrored)
+                return "";
+
+            State.CreateFile(path, result, GreaterThanToken.Location);
+            return "";
+        }
+
+        public override string ToString()
+        {
+            return InnerCommand.ToString() + GreaterThanToken.Contents + FileName.ToString();
+        }
     }
 
     /// <summary>
@@ -118,49 +337,65 @@ namespace CompareTest
     }
 
     /// <summary>
-    /// An expression that evaluates an expression, and executes the result
-    /// as a command.
+    /// An expression that evaluates a command, and returns said command's
+    /// result.
     /// </summary>
     public class CommandExpression : IExpression
     {
-        public const this(set IExpression Command);
+        public const this(
+            set Token AtToken, set Token LeadingParenthesis,
+            set set ICommand Command, set Token TrailingParenthesis);
+
+        /// <summary>
+        /// Gets this command expression's leading at sign.
+        /// </summary>
+        public Token AtToken { get; private set; }
+
+        /// <summary>
+        /// Gets this command expression's leading parenthesis token.
+        /// </summary>
+        public Token LeadingParenthesis { get; private set; }
 
         /// <summary>
         /// Gets the expression that describes the command this
         /// statement should execute.
         /// </summary>
-        public IExpression Command { get; private set; }
+        public ICommand Command { get; private set; }
+
+        /// <summary>
+        /// Gets this command expression's trailing parenthesis token.
+        /// </summary>
+        public Token TrailingParenthesis { get; private set; }
 
         /// <summary>
         /// Gets this test expression's source location.
         /// </summary>
-        public SourceLocation Location { get { return Command.Location; } }
+        public SourceLocation Location
+        {
+            get
+            {
+                return AtToken.Location
+                    .Concat(LeadingParenthesis.Location)
+                    .Concat(Command.Location)
+                    .Concat(TrailingParenthesis.Location);
+            }
+        }
 
         public string Evaluate(Configuration Config, ExecutionState State)
         {
-            string commandStr = Command.Evaluate(Config, State);
-            if (State.HasErrored)
-                return "";
-
-            string result = State.RunProcess(commandStr);
-            if (State.HasErrored)
-            {
-                State.Log.LogError(new LogEntry(
-                    "external error in '" + commandStr.Trim(null) + "'",
-                    result,
-                    Location));
-                return "";
-            }
-
-            return result;
+            return Command.Evaluate(Config, State);
         }
 
         public override string ToString()
         {
-            return "@(" + Command.ToString() + ")";
+            return AtToken.Contents + LeadingParenthesis.Contents +
+                   Command.ToString() + TrailingParenthesis.Contents;
         }
     }
 
+    /// <summary>
+    /// An expression that concatenates the results of two expressions.
+    /// </summary>
     public class ConcatExpression : IExpression
     {
         public const this(set IExpression Left, set IExpression Right);
@@ -188,7 +423,7 @@ namespace CompareTest
     }
 
     /// <summary>
-    /// A test expression that evaluates to the empty string.
+    /// An expression that evaluates to the empty string.
     /// </summary>
     public static class EmptyExpression : IExpression
     {
@@ -214,13 +449,17 @@ namespace CompareTest
     /// </summary>
     public class CommandStatement : IStatement
     {
-        public const this(set IExpression Command);
+        public const this(set ICommand Command, set Token Semicolon);
 
         /// <summary>
-        /// Gets the expression that describes the command this
-        /// statement should execute.
+        /// Gets the command to execute.
         /// </summary>
-        public IExpression Command { get; private set; }
+        public ICommand Command { get; private set; }
+
+        /// <summary>
+        /// Gets this command statement's trailing semicolon.
+        /// </summary>
+        public Token Semicolon { get; private set; }
 
         /// <summary>
         /// Gets this test expression's source location.
@@ -229,29 +468,17 @@ namespace CompareTest
 
         public Configuration Execute(Configuration Config, ExecutionState State)
         {
-            string commandStr = Command.Evaluate(Config, State);
+            string result = Command.Evaluate(Config, State);
 
-            if (State.HasErrored)
-                return Config;
-
-            string result = State.RunProcess(commandStr);
-            if (State.HasErrored)
-            {
-                State.Log.LogError(new LogEntry(
-                    "external error in '" + commandStr.Trim(null) + "'",
-                    result,
-                    Location));
-                return Config;
-            }
-
-            State.Write(result);
+            if (!State.HasErrored)
+                State.Write(result);
 
             return Config;
         }
 
         public override string ToString()
         {
-            return Command.ToString() + ";";
+            return Command.ToString() + Semicolon.Contents;
         }
     }
 
@@ -260,7 +487,9 @@ namespace CompareTest
     /// </summary>
     public class AssignmentStatement : IStatement
     {
-        public const this(set Token Identifier, set IExpression Value);
+        public const this(
+            set Token Identifier, set Token EqualsToken,
+            set IExpression Value, set Token Semicolon);
 
         /// <summary>
         /// Gets the name of the variable to set, i.e. the left-hand side
@@ -269,10 +498,20 @@ namespace CompareTest
         public Token Identifier { get; private set; }
 
         /// <summary>
+        /// Gets this assignment statement's equality token.
+        /// </summary>
+        public Token EqualsToken { get; private set; }
+
+        /// <summary>
         /// Gets the expression whose value will be assigned to the variable,
         /// i.e. the right-hand side of the expression.
         /// </summary>
         public IExpression Value { get; private set; }
+
+        /// <summary>
+        /// Gets this assignment statement's trailing semicolon.
+        /// </summary>
+        public Token Semicolon { get; private set; }
 
         /// <summary>
         /// Gets this test expression's source location.
@@ -296,7 +535,8 @@ namespace CompareTest
 
         public override string ToString()
         {
-            return Identifier.Contents + " = " + Value.ToString() + ";";
+            return Identifier.Contents + EqualsToken.Contents +
+                   Value.ToString() + Semicolon.Contents;
         }
     }
 
@@ -348,7 +588,7 @@ namespace CompareTest
     }
 
     /// <summary>
-    /// A test statement that does nothing.
+    /// A statement that does nothing.
     /// </summary>
     public static class EmptyStatement : IStatement
     {

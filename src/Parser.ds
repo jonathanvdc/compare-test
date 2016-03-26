@@ -79,11 +79,11 @@ namespace CompareTest
         /// </summary>
         public CommandExpression ParseCommandExpression(TokenBuffer Buffer)
         {
-            Buffer.ExpectNontrivialToken(TokenType.At, Log);
-            Buffer.ExpectNontrivialToken(TokenType.LParen, Log);
-            var innerExpr = ParseExpression(Buffer);
-            Buffer.ExpectNontrivialToken(TokenType.RParen, Log);
-            return new CommandExpression(innerExpr);
+            var atTok = Buffer.ExpectNontrivialToken(TokenType.At, Log);
+            var lParen = Buffer.ExpectNontrivialToken(TokenType.LParen, Log);
+            var cmd = ParseCommand(Buffer);
+            var rParen = Buffer.ExpectNontrivialToken(TokenType.RParen, Log);
+            return new CommandExpression(atTok, lParen, cmd, rParen);
         }
 
         /// <summary>
@@ -114,10 +114,10 @@ namespace CompareTest
         public AssignmentStatement ParseAssignmentStatement(TokenBuffer Buffer)
         {
             var ident = Buffer.ExpectNontrivialToken(TokenType.Identifier, Log);
-            Buffer.ExpectNontrivialToken(TokenType.Equals, Log);
+            var eqSign = Buffer.ExpectNontrivialToken(TokenType.Equals, Log);
             var expr = ParseExpression(Buffer);
-            Buffer.ExpectNontrivialToken(TokenType.Semicolon, Log);
-            return new AssignmentStatement(ident, expr);
+            var semicolon = Buffer.ExpectNontrivialToken(TokenType.Semicolon, Log);
+            return new AssignmentStatement(ident, eqSign, expr, semicolon);
         }
 
         /// <summary>
@@ -125,9 +125,77 @@ namespace CompareTest
         /// </summary>
         public CommandStatement ParseCommandStatement(TokenBuffer Buffer)
         {
+            var cmd = ParseCommand(Buffer);
+            var semicolon = Buffer.ExpectNontrivialToken(TokenType.Semicolon, Log);
+            return new CommandStatement(cmd, semicolon);
+        }
+
+        /// <summary>
+        /// Parses a command from the given token buffer.
+        /// </summary>
+        public ICommand ParseCommand(TokenBuffer Buffer)
+        {
             var expr = ParseExpression(Buffer);
-            Buffer.ExpectNontrivialToken(TokenType.Semicolon, Log);
-            return new CommandStatement(expr);
+            var peek = Buffer.PeekNontrivialToken();
+            if (peek.Type == TokenType.ForwardPipe)
+            {
+                return ParseCommandSuffix(ParseInvokeWithInputCommand(expr, Buffer), Buffer);
+            }
+            else
+            {
+                return ParseCommandSuffix(new InvokeProgramCommand(expr), Buffer);
+            }
+        }
+
+        /// <summary>
+        /// Parses an optional command suffix.
+        /// </summary>
+        private ICommand ParseCommandSuffix(
+            ICommand InnerCommand, TokenBuffer Buffer)
+        {
+            var peek = Buffer.PeekNontrivialToken();
+            if (peek.Type == TokenType.Bar)
+            {
+                return ParseCommandSuffix(ParsePipeToProgramCommand(InnerCommand, Buffer), Buffer);
+            }
+            else if (peek.Type == TokenType.GreaterThan)
+            {
+                return ParsePipeToFileCommand(InnerCommand, Buffer);
+            }
+            else
+            {
+                return InnerCommand;
+            }
+        }
+
+        /// <summary>
+        /// Parses a pipe-to-program command.
+        /// </summary>
+        public ICommand ParseInvokeWithInputCommand(IExpression InputExpression, TokenBuffer Buffer)
+        {
+            var bar = Buffer.ExpectNontrivialToken(TokenType.ForwardPipe, Log);
+            var expr = ParseExpression(Buffer);
+            return new InvokeProgramWithInputCommand(InputExpression, bar, expr);
+        }
+
+        /// <summary>
+        /// Parses a pipe-to-program command.
+        /// </summary>
+        public ICommand ParsePipeToProgramCommand(ICommand InputCommand, TokenBuffer Buffer)
+        {
+            var bar = Buffer.ExpectNontrivialToken(TokenType.Bar, Log);
+            var expr = ParseExpression(Buffer);
+            return new PipeToProgramCommand(InputCommand, bar, expr);
+        }
+
+        /// <summary>
+        /// Parses a pipe-to-file command.
+        /// </summary>
+        public ICommand ParsePipeToFileCommand(ICommand InputCommand, TokenBuffer Buffer)
+        {
+            var gt = Buffer.ExpectNontrivialToken(TokenType.GreaterThan, Log);
+            var expr = ParseExpression(Buffer);
+            return new PipeToFileCommand(InputCommand, gt, expr);
         }
 
         /// <summary>

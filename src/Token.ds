@@ -80,7 +80,15 @@ namespace CompareTest
         // '}'
         RBrace = 10,
         // ';'
-        Semicolon = 11
+        Semicolon = 11,
+        // '|'
+        Bar = 12,
+        // '>'
+        GreaterThan = 13,
+        // '<'
+        LessThan = 14,
+        // '|>'
+        ForwardPipe = 15
     }
 
     /// <summary>
@@ -103,6 +111,10 @@ namespace CompareTest
             tokenNames[TokenType.LBrace] = "{";
             tokenNames[TokenType.RBrace] = "}";
             tokenNames[TokenType.Semicolon] = ";";
+            tokenNames[TokenType.Bar] = "|";
+            tokenNames[TokenType.GreaterThan] = ">";
+            tokenNames[TokenType.LessThan] = "<";
+            tokenNames[TokenType.ForwardPipe] = "|>";
         }
 
         private Dictionary<TokenType, string> tokenNames;
@@ -130,7 +142,9 @@ namespace CompareTest
         public bool TerminatesStructure(TokenType Type)
         {
             return Type == TokenType.RBrace || Type == TokenType.RParen
-                || Type == TokenType.Semicolon || Type == TokenType.EndOfFile;
+                || Type == TokenType.Semicolon || Type == TokenType.EndOfFile
+                || Type == TokenType.Bar || Type == TokenType.ForwardPipe
+                || Type == TokenType.GreaterThan;
         }
 
         /// <summary>

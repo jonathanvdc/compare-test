@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
 using System.IO;
+using System.Security;
 using Flame.Compiler;
 using Pixie;
 
@@ -65,10 +66,19 @@ namespace CompareTest
         }
 
         /// <summary>
+        /// Creates a path from the given string that is local to this
+        /// execution state's working directory.
+        /// </summary>
+        public string GetLocalPath(string RelativePath)
+        {
+            return Path.Combine(WorkingDirectory, RelativePath);
+        }
+
+        /// <summary>
         /// Runs a process with the given name and arguments, waits for
         /// completion, and then returns its output.
         /// </summary>
-        public string RunProcess(string Name, string Arguments)
+        public string RunProcess(string Name, string Arguments, string Input)
         {
             if (HasErrored)
                 throw new InvalidOperationException(
@@ -79,7 +89,7 @@ namespace CompareTest
             if (Name.IndexOf(Path.DirectorySeparatorChar) >= 0 ||
                 Name.IndexOf(Path.AltDirectorySeparatorChar) >= 0)
             {
-                fixedName = Path.Combine(WorkingDirectory, Name);
+                fixedName = GetLocalPath(Name);
             }
             else
             {
@@ -95,6 +105,7 @@ namespace CompareTest
             process.StartInfo.FileName = fixedName;
             process.StartInfo.Arguments = Arguments;
             process.StartInfo.UseShellExecute = false;
+            process.StartInfo.RedirectStandardInput = true;
             process.StartInfo.RedirectStandardOutput = true;
             process.StartInfo.RedirectStandardError = true;
 
@@ -102,6 +113,10 @@ namespace CompareTest
             try
             {
                 process.Start();
+
+                // Write to the process' standard input.
+                process.StandardInput.Write(Input);
+                process.StandardInput.Close();
 
                 output = process.StandardOutput.ReadToEnd();
 
@@ -128,11 +143,20 @@ namespace CompareTest
         }
 
         /// <summary>
-        /// Writes a message to the console.
+        /// Runs a process from the given command, waits for
+        /// completion, and then returns its output.
         /// </summary>
-        public void Write(string Message)
+        public string RunProcess(string Command, string Input)
         {
-            Console.Write(Message);
+            string trimmedCommand = Command.Trim(null);
+            int firstSpace = trimmedCommand.IndexOf(' ');
+            if (firstSpace < 0)
+                return RunProcess(trimmedCommand, "", Input);
+            else
+                return RunProcess(
+                    trimmedCommand.Substring(0, firstSpace),
+                    trimmedCommand.Substring(firstSpace + 1),
+                    Input);
         }
 
         /// <summary>
@@ -141,14 +165,67 @@ namespace CompareTest
         /// </summary>
         public string RunProcess(string Command)
         {
-            string trimmedCommand = Command.Trim(null);
-            int firstSpace = trimmedCommand.IndexOf(' ');
-            if (firstSpace < 0)
-                return RunProcess(trimmedCommand, "");
-            else
-                return RunProcess(
-                    trimmedCommand.Substring(0, firstSpace),
-                    trimmedCommand.Substring(firstSpace + 1));
+            return RunProcess(Command, "");
+        }
+
+        /// <summary>
+        /// Writes a message to the console.
+        /// </summary>
+        public void Write(string Message)
+        {
+            Console.Write(Message);
+        }
+
+        /// <summary>
+        /// Creates a file at the given path with the given contents.
+        /// A source location specifies the responsible code fragment if
+        /// anything goes wrong.
+        /// </summary>
+        public void CreateFile(string Path, string Contents, SourceLocation Location)
+        {
+            string locPath = GetLocalPath(Path);
+
+            try
+            {
+                var fs = new FileStream(Path, FileMode.Create, FileAccess.Write);
+                var reader = new StreamWriter(fs);
+                reader.Write(Contents);
+                reader.Dispose();
+                fs.Dispose();
+            }
+            catch (DirectoryNotFoundException ex)
+            {
+                Log.LogError(new LogEntry(
+                    "missing directory",
+                    "'" + locPath + "' cannot not be created, because its parent " +
+                    "directory does not exist.",
+                    Location));
+                ExitCode = 1;
+            }
+            catch (SecurityException ex)
+            {
+                Log.LogError(new LogEntry(
+                    "unathorized access",
+                    "did not have permission to access '" + locPath + "'.",
+                    Location));
+                ExitCode = 1;
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                Log.LogError(new LogEntry(
+                    "unathorized access",
+                    "did not have write-access to '" + locPath + "'.",
+                    Location));
+                ExitCode = 1;
+            }
+            catch (PathTooLongException ex)
+            {
+                Log.LogError(new LogEntry(
+                    "path too long",
+                    "path '" + locPath + "' is too long for the OS to handle.",
+                    Location));
+                ExitCode = 1;
+            }
         }
     }
 }

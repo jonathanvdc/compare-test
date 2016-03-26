@@ -17,6 +17,7 @@ namespace CompareTest
         public const string WindowsPlatformName = "windows";
         public const string PlatformKey = "platform";
         public const string NetRuntimeKey = "net-runtime";
+        public const string ReadFileKey = "cat";
 
         private string GetPlatformName()
         {
@@ -35,11 +36,17 @@ namespace CompareTest
             string platform = GetPlatformName();
             configOptions[PlatformKey] = platform;
             if (platform == WindowsPlatformName)
+            {
                 // No need to explicitly name the runtime on Windows.
                 configOptions[NetRuntimeKey] = "";
+                configOptions[ReadFileKey] = "type";
+            }
             else
+            {
                 // Explicitly use 'mono' on other platforms.
                 configOptions[NetRuntimeKey] = "mono";
+                configOptions[ReadFileKey] = "cat";
+            }
             configOptions[TestManager.WorkingDirectoryKey] = Environment.CurrentDirectory;
             return new Configuration("default", configOptions);
         }
@@ -170,6 +177,16 @@ namespace CompareTest
             return result;
         }
 
+        private void NotifyInvalidSubtest(IStatement Command, ICompilerLog Log)
+        {
+            Log.LogError(new LogEntry(
+                "invalid subtest",
+                "this is not a valid subtest specification. " +
+                "Subtests should be encoded as a sequence of semicolon-delimited " +
+                "paths.",
+                Command.Location));
+        }
+
         /// <summary>
         /// Reads a single subtest, as specified by the given command.
         /// </summary>
@@ -182,17 +199,21 @@ namespace CompareTest
         {
             if (!(Command is CommandStatement))
             {
-                Log.LogError(new LogEntry(
-                    "invalid subtest",
-                    "'" + Command + "' is not a valid subtest specification: " +
-                    "subtests should be encoded as a sequence of semicolon-delimited " +
-                    "paths.",
-                    Command.Location));
+                NotifyInvalidSubtest(Command, Log);
                 return;
             }
 
             var cmdStmt = (CommandStatement)Command;
-            var pathStr = cmdStmt.Command.Evaluate(Config, State).Trim(null);
+
+            if (!(cmdStmt.Command is InvokeProgramCommand))
+            {
+                NotifyInvalidSubtest(Command, Log);
+                return;
+            }
+
+            var invCmd = (InvokeProgramCommand)cmdStmt.Command;
+
+            var pathStr = invCmd.ProgramArgs.Evaluate(Config, State).Trim(null);
             ReadTestsRecursive(
                 new PathIdentifier(BasePath.Parent, pathStr),
                 Log, Config, State, Results, ParsedPaths);
