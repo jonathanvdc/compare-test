@@ -1,0 +1,12 @@
+
+run
+{
+    $mkdir -p tmp;
+    $echo hi > tmp/hi.txt;
+    return = @($cat tmp/hi.txt);
+}
+
+init
+{
+    return = hi;
+}

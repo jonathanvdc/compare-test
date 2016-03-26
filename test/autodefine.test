@@ -3,10 +3,10 @@
 
 run
 {
-    return = $echo;
+    return = $autodefined-variable;
 }
 
 init
 {
-    return = echo;
+    return = autodefined-variable;
 }

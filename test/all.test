@@ -5,4 +5,5 @@ tests
     compare.test;
     cyclic.test;
     globals.test;
+    pipe.test;
 }
