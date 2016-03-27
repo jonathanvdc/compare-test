@@ -112,7 +112,7 @@ namespace CompareTest
     /// <summary>
     /// A command that runs a program.
     /// </summary>
-    public abstract class InvokeProgramCommand : InvokeProgramCommandBase
+    public class InvokeProgramCommand : InvokeProgramCommandBase
     {
         public const this(IExpression ProgramArgs)
             : base(ProgramArgs);
