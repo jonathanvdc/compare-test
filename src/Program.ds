@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using Flame.Compiler;
 using Flame.Front;
 using Flame.Front.Cli;
@@ -31,7 +32,7 @@ namespace CompareTest
                 return WindowsPlatformName;
         }
 
-        private Configuration GetDefaultConfiguration()
+        private Configuration GetDefaultConfiguration(BuildArguments Args)
         {
             var configOptions = new Dictionary<string, string>();
             string platform = GetPlatformName();
@@ -51,6 +52,17 @@ namespace CompareTest
                 configOptions[MakeDirectoryRecursiveKey] = "mkdir -p";
             }
             configOptions[TestManager.WorkingDirectoryKey] = Environment.CurrentDirectory;
+            foreach (var key in Args.Options)
+            {
+                var sb = new StringBuilder();
+                foreach (var opt in Args.GetOption<string[]>(key, new string[] { }))
+                {
+                    if (sb.Length > 0)
+                        sb.Append(' ');
+                    sb.Append(opt);
+                }
+                configOptions[key] = sb.ToString();
+            }
             return new Configuration("default", configOptions);
         }
 
@@ -62,7 +74,7 @@ namespace CompareTest
             var log = new ConsoleLog(ConsoleEnvironment.AcquireConsole(options), options);
             var filtLog = new FilteredLog(options.GetLogFilter(), log);
 
-            var config = GetDefaultConfiguration();
+            var config = GetDefaultConfiguration(options);
 
             var allTests = ReadAllTests(options.SourcePaths, filtLog, config);
             var manager = new TestManager(allTests, CreatePercentageLogger(log));
