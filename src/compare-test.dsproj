@@ -23,6 +23,7 @@
     <Compile Include="Program.ds" />
     <Compile Include="Section.ds" />
     <Compile Include="SyntaxException.ds" />
+    <Compile Include="TestCase.ds" />
     <Compile Include="TestManager.ds" />
     <Compile Include="Token.ds" />
     <Compile Include="TokenBuffer.ds" />

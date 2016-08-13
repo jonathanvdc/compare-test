@@ -43,26 +43,16 @@ namespace CompareTest
     /// </summary>
     public class TestManager
     {
-        alias SectionTuple = Tuple<Section, Configuration, ExecutionState>;
         alias ConfigDict = Dictionary<string, IStatement>;
 
-        public const string BuildSectionName = "build";
-        public const string RunSectionName = "run";
-        public const string ConfigurationsSectionName = "configs";
-        public const string InitializationSectionName = "init";
-        public const string TestsSectionName = "tests";
-        public const string ConfigurationNameKey = "config";
-        public const string WorkingDirectoryKey = "working-directory";
-        public const string ResultKey = "return";
-
         public const this(
-            set IReadOnlyDictionary<PathIdentifier, SectionTuple> Tests,
+            set IReadOnlyList<TestCase> Tests,
             set void(TestOutcome, int) LogCompleted);
 
         /// <summary>
         /// Gets a dictionary of all tests to run.
         /// </summary>
-        public IReadOnlyDictionary<PathIdentifier, SectionTuple> Tests { get; private set; }
+        public IReadOnlyList<TestCase> Tests { get; private set; }
 
         /// <summary>
         /// A delegate that logs a message that notifies the user of the outcome
@@ -72,148 +62,26 @@ namespace CompareTest
         public void(TestOutcome, int) LogCompleted { get; private set; }
 
         /// <summary>
-        /// Extracts all configuration statements from the given root section.
-        /// </summary>
-        private ConfigDict GetConfigurations(Section Root)
-        {
-            var results = new Dictionary<string, IStatement>();
-            if (Root.Sections.TryGetValue(ConfigurationsSectionName, &Section configSec))
-            {
-                foreach (var sec in configSec.Sections)
-                {
-                    results[sec.Key] = sec.Value.AsStatement();
-                }
-            }
-            else
-            {
-                results["default"] = EmptyStatement;
-            }
-            return results;
-        }
-
-        /// <summary>
-        /// Creates a dictionary that maps all sections to their
-        /// configurations.
-        /// </summary>
-        private Dictionary<Section, ConfigDict> GetAllConfigurations()
-        {
-            var results = new Dictionary<Section, ConfigDict>();
-            foreach (var item in Tests.Values)
-            {
-                var sec = item.Item1;
-                results[sec] = GetConfigurations(sec);
-            }
-            return results;
-        }
-
-        private MarkupNode CreateConfigOutputRemark(string Output, Configuration Config)
-        {
-            return new MarkupNode(NodeConstants.RemarksNodeType, new MarkupNode[]
-            {
-                new MarkupNode(NodeConstants.TextNodeType, "output from configuration '"),
-                new MarkupNode(NodeConstants.BrightNodeType, Config.Name),
-                new MarkupNode(NodeConstants.TextNodeType, "':"),
-                new MarkupNode(NodeConstants.ParagraphNodeType, Output)
-            });
-        }
-
-        /// <summary>
-        /// Runs a single test. A list containing all test outcomes for this
-        /// test is returned.
-        /// </summary>
-        private IReadOnlyList<TestOutcome> RunTest(
-            Section Root, Configuration Config,
-            ExecutionState State, PathIdentifier Path,
-            ConfigDict AllConfigs, int ConfigurationIndex,
-            int TotalConfigCount)
-        {
-            // The 'init' section already ran by this time.
-            var rootStmt = Root.GetOptionalStatementSection(RunSectionName);
-            var buildStmt = Root.GetOptionalStatementSection(BuildSectionName);
-
-            Configuration resultConfig = Config;
-            string result;
-            if (!Config.Variables.TryGetValue(ResultKey, &result))
-            {
-                result = null;
-                resultConfig = null;
-            }
-
-            var outcomes = new List<TestOutcome>();
-
-            int i = 0;
-            foreach (var configPair in AllConfigs)
-            {
-                var configState = State.Fork();
-
-                var configVals = new Dictionary<string, string>();
-                configVals[ConfigurationNameKey] = configPair.Key;
-
-                // Create a subconfiguration...
-                var config = Config.CreateSubconfiguration(configPair.Key, configVals);
-                // ...configure...
-                config = configPair.Value.Execute(config, configState);
-                // ...build...
-                config = buildStmt.Execute(config, configState);
-                // ...and run!
-                config = rootStmt.Execute(config, configState);
-
-                if (config.Variables.TryGetValue(ResultKey, &string newResult))
-                {
-                    if (result == null)
-                    {
-                        result = newResult;
-                        resultConfig = config;
-                    }
-                    else if (result != newResult)
-                    {
-                        configState.ExitCode = 1;
-                        var nodes = new List<MarkupNode>();
-                        nodes.Add(CreateConfigOutputRemark(result, resultConfig));
-                        nodes.Add(CreateConfigOutputRemark(newResult, config));
-                        configState.Log.LogError(new LogEntry(
-                            "inconsistent results",
-                            new MarkupNode("entry", nodes)));
-                    }
-                }
-
-                var configOutcome = new TestOutcome(
-                    Path, config, ConfigurationIndex + i, configState.HasErrored);
-                LogCompleted(configOutcome, TotalConfigCount);
-                outcomes.Add(configOutcome);
-                i++;
-            }
-
-            return outcomes;
-        }
-
-        /// <summary>
         /// Runs all tests stored in this test manager. All test outcomes are
         /// stored in a list, which is returned.
         /// </summary>
         public IReadOnlyList<TestOutcome> RunTests()
         {
-            // First, get all configurations.
-            var allConfigs = GetAllConfigurations();
-
-            // Next, compute their count.
+            // Compute the total number of configurations.
             int totalConfigCount = 0;
-            foreach (var configPair in allConfigs)
+            foreach (var testCase in Tests)
             {
-                totalConfigCount += configPair.Value.Count;
+                totalConfigCount += testCase.Configurations.Count;
             }
 
             var allOutcomes = new List<TestOutcome>();
 
             int i = 0;
             // Finally, run all tests.
-            foreach (var testPair in Tests)
+            foreach (var testCase in Tests)
             {
-                var testTuple = testPair.Value;
-                allOutcomes.AddRange(RunTest(
-                    testTuple.Item1, testTuple.Item2, testTuple.Item3,
-                    testPair.Key, allConfigs[testTuple.Item1], i, totalConfigCount));
-                i += allConfigs[testTuple.Item1].Count;
+                allOutcomes.AddRange(testCase.RunTest(LogCompleted, i, totalConfigCount));
+                i += testCase.Configurations.Count;
             }
 
             return allOutcomes;

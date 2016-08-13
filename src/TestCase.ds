@@ -1,0 +1,158 @@
+using System;
+using System.Collections.Generic;
+using Flame.Compiler;
+using Flame.Front;
+using Flame.Front.Cli;
+using Flame.Front.Options;
+using Pixie;
+
+namespace CompareTest
+{
+    /// <summary>
+    /// Describes a single test case, which may have multiple configurations.
+    /// </summary>
+    public class TestCase
+    {
+        alias ConfigDict = IReadOnlyDictionary<string, IStatement>;
+
+        public const string BuildSectionName = "build";
+        public const string RunSectionName = "run";
+        public const string ConfigurationsSectionName = "configs";
+        public const string InitializationSectionName = "init";
+        public const string TestsSectionName = "tests";
+        public const string ConfigurationNameKey = "config";
+        public const string WorkingDirectoryKey = "working-directory";
+        public const string ResultKey = "return";
+
+        public this(
+            set PathIdentifier Path, set Section Root,
+            set Configuration InitialConfiguration, set ExecutionState State)
+        {
+            this.Configurations = GetConfigurations();
+        }
+
+        /// <summary>
+        /// Gets this test case's path.
+        /// </summary>
+        public PathIdentifier Path { get; private set; }
+
+        /// <summary>
+        /// Gets the root section for this test case.
+        /// </summary>
+        public Section Root { get; private set; }
+
+        /// <summary>
+        /// Gets this test case's initial configuration.
+        /// </summary>
+        public Configuration InitialConfiguration { get; private set; }
+
+        /// <summary>
+        /// Gets this test case's intial execution state.
+        /// </summary>
+        public ExecutionState State { get; private set; }
+
+        /// <summary>
+        /// Gets this test case's set of configurations.
+        /// </summary>
+        public ConfigDict Configurations { get; private set; }
+
+        /// <summary>
+        /// Extracts all configuration statements from the given root section.
+        /// </summary>
+        private ConfigDict GetConfigurations()
+        {
+            var results = new Dictionary<string, IStatement>();
+            if (Root.Sections.TryGetValue(ConfigurationsSectionName, &Section configSec))
+            {
+                foreach (var sec in configSec.Sections)
+                {
+                    results[sec.Key] = sec.Value.AsStatement();
+                }
+            }
+            else
+            {
+                results["default"] = EmptyStatement;
+            }
+            return results;
+        }
+
+        private MarkupNode CreateConfigOutputRemark(string Output, Configuration Config)
+        {
+            return new MarkupNode(NodeConstants.RemarksNodeType, new MarkupNode[]
+            {
+                new MarkupNode(NodeConstants.TextNodeType, "output from configuration '"),
+                new MarkupNode(NodeConstants.BrightNodeType, Config.Name),
+                new MarkupNode(NodeConstants.TextNodeType, "':"),
+                new MarkupNode(NodeConstants.ParagraphNodeType, Output)
+            });
+        }
+
+        /// <summary>
+        /// Runs this test case. A list containing all test outcomes for this
+        /// test is returned.
+        /// </summary>
+        public IReadOnlyList<TestOutcome> RunTest(
+            void(TestOutcome, int) LogCompleted,
+            int ConfigurationIndex, int TotalConfigCount)
+        {
+            // The 'init' section already ran by this time.
+            var rootStmt = Root.GetOptionalStatementSection(RunSectionName);
+            var buildStmt = Root.GetOptionalStatementSection(BuildSectionName);
+
+            Configuration resultConfig = InitialConfiguration;
+            string result;
+            if (!resultConfig.Variables.TryGetValue(ResultKey, &result))
+            {
+                result = null;
+                resultConfig = null;
+            }
+
+            var outcomes = new List<TestOutcome>();
+
+            int i = 0;
+            foreach (var configPair in Configurations)
+            {
+                var configState = State.Fork();
+
+                var configVals = new Dictionary<string, string>();
+                configVals[ConfigurationNameKey] = configPair.Key;
+
+                // Create a subconfiguration...
+                var config = InitialConfiguration.CreateSubconfiguration(configPair.Key, configVals);
+                // ...configure...
+                config = configPair.Value.Execute(config, configState);
+                // ...build...
+                config = buildStmt.Execute(config, configState);
+                // ...and run!
+                config = rootStmt.Execute(config, configState);
+
+                if (config.Variables.TryGetValue(ResultKey, &string newResult))
+                {
+                    if (result == null)
+                    {
+                        result = newResult;
+                        resultConfig = config;
+                    }
+                    else if (result != newResult)
+                    {
+                        configState.ExitCode = 1;
+                        var nodes = new List<MarkupNode>();
+                        nodes.Add(CreateConfigOutputRemark(result, resultConfig));
+                        nodes.Add(CreateConfigOutputRemark(newResult, config));
+                        configState.Log.LogError(new LogEntry(
+                            "inconsistent results",
+                            new MarkupNode("entry", nodes)));
+                    }
+                }
+
+                var configOutcome = new TestOutcome(
+                    Path, config, ConfigurationIndex + i, configState.HasErrored);
+                LogCompleted(configOutcome, TotalConfigCount);
+                outcomes.Add(configOutcome);
+                i++;
+            }
+
+            return outcomes;
+        }
+    }
+}

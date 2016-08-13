@@ -51,7 +51,7 @@ namespace CompareTest
                 configOptions[ReadFileKey] = "cat";
                 configOptions[MakeDirectoryRecursiveKey] = "mkdir -p";
             }
-            configOptions[TestManager.WorkingDirectoryKey] = Environment.CurrentDirectory;
+            configOptions[TestCase.WorkingDirectoryKey] = Environment.CurrentDirectory;
             foreach (var key in Args.Options)
             {
                 var sb = new StringBuilder();
@@ -209,7 +209,7 @@ namespace CompareTest
             IStatement Command, ICompilerLog Log,
             Configuration Config, ExecutionState State,
             PathIdentifier BasePath,
-            Dictionary<PathIdentifier, SectionTuple> Results,
+            List<TestCase> Results,
             HashSet<string> ParsedPaths)
         {
             if (!(Command is CommandStatement))
@@ -241,7 +241,7 @@ namespace CompareTest
         private void ReadTestsRecursive(
             PathIdentifier Path, ICompilerLog Log,
             Configuration Config, ExecutionState State,
-            Dictionary<PathIdentifier, SectionTuple> Results,
+            List<TestCase> Results,
             HashSet<string> ParsedPaths)
         {
             string absPath = Path.AbsolutePath.Path;
@@ -258,17 +258,17 @@ namespace CompareTest
             // Fork the parent execution state.
             var secState = State.Fork(Path.AbsolutePath.Parent.Path);
             // Run the 'init' section first.
-            var secInitStmt = sec.GetOptionalStatementSection(TestManager.InitializationSectionName);
+            var secInitStmt = sec.GetOptionalStatementSection(TestCase.InitializationSectionName);
             // Execute that statement to obtain a configuration object for
             // this section.
             var secConfig = secInitStmt.Execute(Config, secState);
 
             // Create a section tuple for this section, and add it to the
             // results dictionary.
-            Results[Path] = new SectionTuple(sec, secConfig, secState);
+            Results.Add(new TestCase(Path, sec, secConfig, secState));
 
             // Then try to find subtests in the 'tests' section.
-            if (sec.Sections.TryGetValue(TestManager.TestsSectionName, &Section subtests))
+            if (sec.Sections.TryGetValue(TestCase.TestsSectionName, &Section subtests))
             {
                 foreach (var item in subtests.Statements)
                 {
@@ -286,14 +286,14 @@ namespace CompareTest
         /// to tuples, which consist of a section,
         /// said section's configuration and its execution state.
         /// </summary>
-        public IReadOnlyDictionary<PathIdentifier, SectionTuple> ReadAllTests(
+        public IReadOnlyList<TestCase> ReadAllTests(
             [PathIdentifier] Paths, ICompilerLog Log,
             Configuration Config)
         {
-            var results = new Dictionary<PathIdentifier, SectionTuple>();
+            var results = new List<TestCase>();
             var visitedPaths = new HashSet<string>();
             var state = new ExecutionState(
-                Config.Variables[TestManager.WorkingDirectoryKey], Log);
+                Config.Variables[TestCase.WorkingDirectoryKey], Log);
             foreach (var item in Paths)
             {
                 ReadTestsRecursive(item, Log, Config, state, results, visitedPaths);
