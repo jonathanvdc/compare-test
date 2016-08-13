@@ -19,7 +19,7 @@ namespace CompareTest
     {
         public const this(
             set PathIdentifier Path, set Configuration Config,
-            set int Index, set bool HasFailed);
+            set bool HasFailed);
 
         /// <summary>
         /// Gets the test's path.
@@ -30,11 +30,6 @@ namespace CompareTest
         /// Gets the test's configuration.
         /// </summary>
         public Configuration Config { get; private set; }
-
-        /// <summary>
-        /// Gets the test/configuration pair's index.
-        /// </summary>
-        public int Index { get; private set; }
 
         /// <summary>
         /// Gets a boolean that tells if this test was a failure.
@@ -49,7 +44,7 @@ namespace CompareTest
     {
         public this(
             set TestCase Test, set void(TestOutcome, int) LogCompleted,
-            set int TotalConfigurationIndex, set int TotalConfigurationCount)
+            set int TotalConfigurationCount)
         { }
 
         /// <summary>
@@ -65,11 +60,6 @@ namespace CompareTest
         public void(TestOutcome, int) LogCompleted { get; private set; }
 
         /// <summary>
-        /// Gets the index of the test case's first configuration.
-        /// </summary>
-        public int TotalConfigurationIndex { get; private set; }
-
-        /// <summary>
         /// Gets the total number of configurations.
         /// </summary>
         public int TotalConfigurationCount { get; private set; }
@@ -79,7 +69,7 @@ namespace CompareTest
         /// </summary>
         public IReadOnlyList<TestOutcome> Run()
         {
-            return Test.Run(LogCompleted, TotalConfigurationIndex, TotalConfigurationCount);
+            return Test.Run(LogCompleted, TotalConfigurationCount);
         }
     }
 
@@ -89,20 +79,20 @@ namespace CompareTest
     public class TestProcessor
     {
         public this(
-            set Queue<TestCase> Tests,
+            IEnumerable<TestCase> Tests,
             set void(TestOutcome, int) LogCompleted,
             set int TotalConfigurationCount)
         {
-            this.ProcessedConfigurationCount = 0;
-            this.outcomeList = new List<List<TestOutcome>>();
+            this.Tests = new ConcurrentQueue<TestCase>(Tests);
+            this.outcomeLists = new ConcurrentQueue<List<TestOutcome>>();
         }
 
         /// <summary>
         /// Gets the queue of tests to process.
         /// </summary>
-        public Queue<TestCase> Tests { get; private set; }
+        public ConcurrentQueue<TestCase> Tests { get; private set; }
 
-        private List<List<TestOutcome>> outcomeList;
+        private ConcurrentQueue<List<TestOutcome>> outcomeLists;
 
         /// <summary>
         /// Gets the set of resulting outcomes.
@@ -112,7 +102,7 @@ namespace CompareTest
             get
             {
                 return Enumerable.SelectMany<List<TestOutcome>, TestOutcome>(
-                    outcomeList, IEnumerable<TestOutcome>(List<TestOutcome> x) => x);
+                    outcomeLists, IEnumerable<TestOutcome>(List<TestOutcome> x) => x);
             }
         }
 
@@ -124,11 +114,6 @@ namespace CompareTest
         public void(TestOutcome, int) LogCompleted { get; private set; }
 
         /// <summary>
-        /// Gets the number of configurations that have been processed so far.
-        /// </summary>
-        public int ProcessedConfigurationCount { get; private set; }
-
-        /// <summary>
         /// Gets the total number of configurations.
         /// </summary>
         public int TotalConfigurationCount { get; private set; }
@@ -137,36 +122,20 @@ namespace CompareTest
         /// Dequeues a single item from the queue of test cases.
         /// </summary>
         private bool TryDequeueTestCase(
-            out TestCase^ Test, out int^ ConfigurationIndex,
-            out List<TestOutcome>^ OutcomeBag)
+            out TestCase^ Test, out List<TestOutcome>^ OutcomeBag)
         {
-            bool result;
-            Monitor.Enter(outcomeList);
-            try
+            if (Tests.TryDequeue(Test))
             {
-                *ConfigurationIndex = ProcessedConfigurationCount;
-                if (Tests.Count == 0)
-                {
-                    *Test = null;
-                    *OutcomeBag = null;
-                    result = false;
-                }
-                else
-                {
-                    var resultList = new List<TestOutcome>();
-                    outcomeList.Add(resultList);
-                    *OutcomeBag = resultList;
-                    var testCase = Tests.Dequeue();
-                    *Test = testCase;
-                    ProcessedConfigurationCount += testCase.Configurations.Count;
-                    result = true;
-                }
+                var resultList = new List<TestOutcome>();
+                outcomeLists.Enqueue(resultList);
+                *OutcomeBag = resultList;
+                return true;
             }
-            finally
+            else
             {
-                Monitor.Exit(outcomeList);
+                *OutcomeBag = null;
+                return false;
             }
-            return result;
         }
 
         /// <summary>
@@ -175,12 +144,11 @@ namespace CompareTest
         public void Run()
         {
             TestCase testCase;
-            int configIndex;
             List<TestOutcome> outcomeList;
-            while (TryDequeueTestCase(&testCase, &configIndex, &outcomeList))
+            while (TryDequeueTestCase(&testCase, &outcomeList))
             {
                 var exec = new TestExecution(
-                    testCase, LogCompleted, configIndex, TotalConfigurationCount);
+                    testCase, LogCompleted, TotalConfigurationCount);
 
                 outcomeList.AddRange(exec.Run());
             }
@@ -238,9 +206,8 @@ namespace CompareTest
                 totalConfigCount += testCase.Configurations.Count;
             }
 
-            var testQueue = new Queue<TestCase>(Tests);
             var processor = new TestProcessor(
-                testQueue, LogCompleted, totalConfigCount);
+                Tests, LogCompleted, totalConfigCount);
 
             if (ParallelTaskCount == 1)
             {

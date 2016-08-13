@@ -158,8 +158,7 @@ namespace CompareTest
         /// test is returned.
         /// </summary>
         public IReadOnlyList<TestOutcome> Run(
-            void(TestOutcome, int) LogCompleted,
-            int ConfigurationIndex, int TotalConfigCount)
+            void(TestOutcome, int) LogCompleted, int TotalConfigCount)
         {
             // The 'init' section already ran by this time.
             var rootStmt = Root.GetOptionalStatementSection(RunSectionName);
@@ -175,7 +174,6 @@ namespace CompareTest
 
             var outcomes = new List<TestOutcome>();
 
-            int i = 0;
             foreach (var configPair in Configurations)
             {
                 var newPair = new ConfigurationExecution(
@@ -205,10 +203,9 @@ namespace CompareTest
                 }
 
                 var configOutcome = new TestOutcome(
-                    Path, config, ConfigurationIndex + i, configState.HasErrored);
+                    Path, config, configState.HasErrored);
                 LogCompleted(configOutcome, TotalConfigCount);
                 outcomes.Add(configOutcome);
-                i++;
             }
 
             return outcomes;

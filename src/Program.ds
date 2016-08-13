@@ -16,22 +16,28 @@ namespace CompareTest
     /// </summary>
     public class PercentageLogger
     {
-        public this(set ConsoleLog Log);
+        public this(set ConsoleLog Log)
+        {
+            this.outcomeIndex = 0;
+        }
 
         /// <summary>
         /// Gets this percentage logger's underlying console log.
         /// </summary>
         public ConsoleLog Log { get; private set; }
 
+        private int outcomeIndex;
+
         /// <summary>
         /// Logs a test outcome.
         /// </summary>
-        public void LogPercentage(TestOutcome Outcome, int TotalOutcomeCount)
+        public void LogOutcome(TestOutcome Outcome, int TotalOutcomeCount)
         {
             Monitor.Enter(Log.SyncRoot);
             try
             {
-                double percentage = 100.0 * (double)(Outcome.Index + 1) / (double)TotalOutcomeCount;
+                outcomeIndex++;
+                double percentage = 100.0 * (double)outcomeIndex / (double)TotalOutcomeCount;
                 string percentageStr = (string)(int)percentage;
                 while (percentageStr.Length < 3)
                     percentageStr = " " + percentageStr;
@@ -182,7 +188,7 @@ namespace CompareTest
 
         private void(TestOutcome, int) CreatePercentageLogger(ConsoleLog Log)
         {
-            return new PercentageLogger(Log).LogPercentage;
+            return new PercentageLogger(Log).LogOutcome;
         }
 
         /// <summary>
