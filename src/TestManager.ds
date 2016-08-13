@@ -80,7 +80,7 @@ namespace CompareTest
             // Finally, run all tests.
             foreach (var testCase in Tests)
             {
-                allOutcomes.AddRange(testCase.RunTest(LogCompleted, i, totalConfigCount));
+                allOutcomes.AddRange(testCase.Run(LogCompleted, i, totalConfigCount));
                 i += testCase.Configurations.Count;
             }
 

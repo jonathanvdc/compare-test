@@ -9,6 +9,72 @@ using Pixie;
 namespace CompareTest
 {
     /// <summary>
+    /// Describes a test configuration that has been primed for execution.
+    /// </summary>
+    public class ConfigurationExecution
+    {
+        public this(
+            set string Name, set Configuration InitialConfiguration,
+            set ExecutionState State,
+            set IStatement ConfigureStatement,
+            set IStatement BuildStatement,
+            set IStatement RunStatement)
+        { }
+
+        /// <summary>
+        /// Gets the configuration's name.
+        /// </summary>
+        public string Name { get; private set; }
+
+        /// <summary>
+        /// Gets this test case's initial configuration.
+        /// </summary>
+        public Configuration InitialConfiguration { get; private set; }
+
+        /// <summary>
+        /// Gets this test case's intial execution state.
+        /// </summary>
+        public ExecutionState State { get; private set; }
+
+        /// <summary>
+        /// Gets the configure-statement for this configuration.
+        /// </summary>
+        public IStatement ConfigureStatement { get; private set; }
+
+        /// <summary>
+        /// Gets the test's build-statement.
+        /// </summary>
+        public IStatement BuildStatement { get; private set; }
+
+        /// <summary>
+        /// Gets the test's run-statement.
+        /// </summary>
+        public IStatement RunStatement { get; private set; }
+
+        /// <summary>
+        /// Runs this configuration.
+        /// </summary>
+        public Tuple<ExecutionState, Configuration> Run()
+        {
+            var configState = State.Fork();
+
+            var configVals = new Dictionary<string, string>();
+            configVals[TestCase.ConfigurationNameKey] = Name;
+
+            // Create a subconfiguration...
+            var config = InitialConfiguration.CreateSubconfiguration(Name, configVals);
+            // ...configure...
+            config = ConfigureStatement.Execute(config, configState);
+            // ...build...
+            config = BuildStatement.Execute(config, configState);
+            // ...and run!
+            config = RunStatement.Execute(config, configState);
+
+            return new Tuple<ExecutionState, Configuration>(configState, config);
+        }
+    }
+
+    /// <summary>
     /// Describes a single test case, which may have multiple configurations.
     /// </summary>
     public class TestCase
@@ -91,7 +157,7 @@ namespace CompareTest
         /// Runs this test case. A list containing all test outcomes for this
         /// test is returned.
         /// </summary>
-        public IReadOnlyList<TestOutcome> RunTest(
+        public IReadOnlyList<TestOutcome> Run(
             void(TestOutcome, int) LogCompleted,
             int ConfigurationIndex, int TotalConfigCount)
         {
@@ -112,19 +178,12 @@ namespace CompareTest
             int i = 0;
             foreach (var configPair in Configurations)
             {
-                var configState = State.Fork();
+                var newPair = new ConfigurationExecution(
+                    configPair.Key, InitialConfiguration, State,
+                    configPair.Value, buildStmt, rootStmt).Run();
 
-                var configVals = new Dictionary<string, string>();
-                configVals[ConfigurationNameKey] = configPair.Key;
-
-                // Create a subconfiguration...
-                var config = InitialConfiguration.CreateSubconfiguration(configPair.Key, configVals);
-                // ...configure...
-                config = configPair.Value.Execute(config, configState);
-                // ...build...
-                config = buildStmt.Execute(config, configState);
-                // ...and run!
-                config = rootStmt.Execute(config, configState);
+                var configState = newPair.Item1;
+                var config = newPair.Item2;
 
                 if (config.Variables.TryGetValue(ResultKey, &string newResult))
                 {
