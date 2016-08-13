@@ -39,6 +39,47 @@ namespace CompareTest
     }
 
     /// <summary>
+    /// A test case that has been primed for execution.
+    /// </summary>
+    public class TestExecution
+    {
+        public this(
+            set TestCase Test, set void(TestOutcome, int) LogCompleted,
+            set int TotalConfigurationIndex, set int TotalConfigurationCount)
+        { }
+
+        /// <summary>
+        /// Gets the test case to run.
+        /// </summary>
+        public TestCase Test { get; private set; }
+
+        /// <summary>
+        /// A delegate that logs a message that notifies the user of the outcome
+        /// of the given test. The total number of tests/configuration pairs
+        /// is also given.
+        /// </summary>
+        public void(TestOutcome, int) LogCompleted { get; private set; }
+
+        /// <summary>
+        /// Gets the index of the test case's first configuration.
+        /// </summary>
+        public int TotalConfigurationIndex { get; private set; }
+
+        /// <summary>
+        /// Gets the total number of configurations.
+        /// </summary>
+        public int TotalConfigurationCount { get; private set; }
+
+        /// <summary>
+        /// Runs this configuration.
+        /// </summary>
+        public IReadOnlyList<TestOutcome> Run()
+        {
+            return Test.Run(LogCompleted, TotalConfigurationIndex, TotalConfigurationCount);
+        }
+    }
+
+    /// <summary>
     /// A class of objects that take care of running tests.
     /// </summary>
     public class TestManager
@@ -76,12 +117,12 @@ namespace CompareTest
 
             var allOutcomes = new List<TestOutcome>();
 
-            int i = 0;
             // Finally, run all tests.
             foreach (var testCase in Tests)
             {
-                allOutcomes.AddRange(testCase.Run(LogCompleted, i, totalConfigCount));
-                i += testCase.Configurations.Count;
+                var exec = new TestExecution(
+                    testCase, LogCompleted, allOutcomes.Count, totalConfigCount);
+                allOutcomes.AddRange(exec.Run());
             }
 
             return allOutcomes;
