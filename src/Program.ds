@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using System.Threading;
 using Flame.Compiler;
 using Flame.Front;
 using Flame.Front.Cli;
@@ -9,6 +10,48 @@ using Flame.Front.Options;
 
 namespace CompareTest
 {
+    /// <summary>
+    /// An object that logs test outcomes, and records the percentage of completed
+    /// tests as well.
+    /// </summary>
+    public class PercentageLogger
+    {
+        public this(set ConsoleLog Log);
+
+        /// <summary>
+        /// Gets this percentage logger's underlying console log.
+        /// </summary>
+        public ConsoleLog Log { get; private set; }
+
+        /// <summary>
+        /// Logs a test outcome.
+        /// </summary>
+        public void LogPercentage(TestOutcome Outcome, int TotalOutcomeCount)
+        {
+            Monitor.Enter(Log.SyncRoot);
+            try
+            {
+                double percentage = 100.0 * (double)(Outcome.Index + 1) / (double)TotalOutcomeCount;
+                string percentageStr = (string)(int)percentage;
+                while (percentageStr.Length < 3)
+                    percentageStr = " " + percentageStr;
+                if (Outcome.HasFailed)
+                    Log.Console.Write("[" + percentageStr + "%]", Log.ErrorStyle);
+                else
+                    Log.Console.Write("[" + percentageStr + "%]", Log.MessageStyle);
+                Log.Console.Write(" ");
+                Log.Console.Write(Outcome.Path.Path, Log.ContrastForegroundColor);
+                Log.Console.Write(" - ");
+                Log.Console.Write(Outcome.Config.Name);
+                Log.Console.WriteLine();
+            }
+            finally
+            {
+                Monitor.Exit(Log.SyncRoot);
+            }
+        }
+    }
+
     public static class Program
     {
         alias SectionTuple = Tuple<Section, Configuration, ExecutionState>;
@@ -77,7 +120,13 @@ namespace CompareTest
             var config = GetDefaultConfiguration(options);
 
             var allTests = ReadAllTests(options.SourcePaths, filtLog, config);
-            var manager = new TestManager(allTests, CreatePercentageLogger(log));
+
+            // Get the number of parallel tasks to use.
+            int taskCount = options.GetOption<int>("j", 1);
+            if (taskCount <= 0)
+                taskCount = Environment.ProcessorCount;
+
+            var manager = new TestManager(allTests, CreatePercentageLogger(log), taskCount);
             var outcomes = manager.RunTests();
             var failures = FilterFailures(outcomes);
             log.Console.Write("Ran ");
@@ -108,7 +157,7 @@ namespace CompareTest
                 exitCode = 1;
             }
 
-            Environment.Exit(exitCode);
+            Environment.ExitCode = exitCode;
         }
 
         private string ToCountString(int Count, string Type)
@@ -133,23 +182,7 @@ namespace CompareTest
 
         private void(TestOutcome, int) CreatePercentageLogger(ConsoleLog Log)
         {
-            return void(TestOutcome outcome, int n) =>
-            {
-                double percentage = 100.0 * (double)(outcome.Index + 1) / (double)n;
-                string percentageStr = (string)(int)percentage;
-                while (percentageStr.Length < 3)
-                    percentageStr = " " + percentageStr;
-                if (outcome.HasFailed)
-                    Log.Console.Write("[" + percentageStr + "%]", Log.ErrorStyle);
-                else
-                    Log.Console.Write("[" + percentageStr + "%]", Log.MessageStyle);
-                Log.Console.Write(" ");
-                Log.Console.Write(outcome.Path.Path, Log.ContrastForegroundColor);
-                Log.Console.Write(" - ");
-                Log.Console.Write(outcome.Config.Name);
-                Log.Console.WriteLine();
-                return;
-            };
+            return new PercentageLogger(Log).LogPercentage;
         }
 
         /// <summary>

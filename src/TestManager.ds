@@ -1,5 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Linq;
 using Flame.Compiler;
 using Flame.Front;
 using Flame.Front.Cli;
@@ -80,15 +84,129 @@ namespace CompareTest
     }
 
     /// <summary>
+    /// An entity that runs tests.
+    /// </summary>
+    public class TestProcessor
+    {
+        public this(
+            set Queue<TestCase> Tests,
+            set void(TestOutcome, int) LogCompleted,
+            set int TotalConfigurationCount)
+        {
+            this.ProcessedConfigurationCount = 0;
+            this.outcomeList = new List<List<TestOutcome>>();
+        }
+
+        /// <summary>
+        /// Gets the queue of tests to process.
+        /// </summary>
+        public Queue<TestCase> Tests { get; private set; }
+
+        private List<List<TestOutcome>> outcomeList;
+
+        /// <summary>
+        /// Gets the set of resulting outcomes.
+        /// </summary>
+        public IEnumerable<TestOutcome> Outcomes
+        {
+            get
+            {
+                return Enumerable.SelectMany<List<TestOutcome>, TestOutcome>(
+                    outcomeList, IEnumerable<TestOutcome>(List<TestOutcome> x) => x);
+            }
+        }
+
+        /// <summary>
+        /// A delegate that logs a message that notifies the user of the outcome
+        /// of the given test. The total number of tests/configuration pairs
+        /// is also given.
+        /// </summary>
+        public void(TestOutcome, int) LogCompleted { get; private set; }
+
+        /// <summary>
+        /// Gets the number of configurations that have been processed so far.
+        /// </summary>
+        public int ProcessedConfigurationCount { get; private set; }
+
+        /// <summary>
+        /// Gets the total number of configurations.
+        /// </summary>
+        public int TotalConfigurationCount { get; private set; }
+
+        /// <summary>
+        /// Dequeues a single item from the queue of test cases.
+        /// </summary>
+        private bool TryDequeueTestCase(
+            out TestCase^ Test, out int^ ConfigurationIndex,
+            out List<TestOutcome>^ OutcomeBag)
+        {
+            bool result;
+            Monitor.Enter(outcomeList);
+            try
+            {
+                *ConfigurationIndex = ProcessedConfigurationCount;
+                if (Tests.Count == 0)
+                {
+                    *Test = null;
+                    *OutcomeBag = null;
+                    result = false;
+                }
+                else
+                {
+                    var resultList = new List<TestOutcome>();
+                    outcomeList.Add(resultList);
+                    *OutcomeBag = resultList;
+                    var testCase = Tests.Dequeue();
+                    *Test = testCase;
+                    ProcessedConfigurationCount += testCase.Configurations.Count;
+                    result = true;
+                }
+            }
+            finally
+            {
+                Monitor.Exit(outcomeList);
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Processes tests until the input queue is empty.
+        /// </summary>
+        public void Run()
+        {
+            TestCase testCase;
+            int configIndex;
+            List<TestOutcome> outcomeList;
+            while (TryDequeueTestCase(&testCase, &configIndex, &outcomeList))
+            {
+                var exec = new TestExecution(
+                    testCase, LogCompleted, configIndex, TotalConfigurationCount);
+
+                outcomeList.AddRange(exec.Run());
+            }
+        }
+    }
+
+    /// <summary>
     /// A class of objects that take care of running tests.
     /// </summary>
     public class TestManager
     {
         alias ConfigDict = Dictionary<string, IStatement>;
 
-        public const this(
+        public this(
             set IReadOnlyList<TestCase> Tests,
-            set void(TestOutcome, int) LogCompleted);
+            set void(TestOutcome, int) LogCompleted)
+        {
+            this.ParallelTaskCount = 1;
+        }
+
+        public this(
+            set IReadOnlyList<TestCase> Tests,
+            set void(TestOutcome, int) LogCompleted,
+            set int ParallelTaskCount)
+            in { ParallelTaskCount > 0 }
+        { }
 
         /// <summary>
         /// Gets a dictionary of all tests to run.
@@ -103,6 +221,11 @@ namespace CompareTest
         public void(TestOutcome, int) LogCompleted { get; private set; }
 
         /// <summary>
+        /// Gets the number of parallel tasks to launch.
+        /// </summary>
+        public int ParallelTaskCount { get; private set; }
+
+        /// <summary>
         /// Runs all tests stored in this test manager. All test outcomes are
         /// stored in a list, which is returned.
         /// </summary>
@@ -115,17 +238,28 @@ namespace CompareTest
                 totalConfigCount += testCase.Configurations.Count;
             }
 
-            var allOutcomes = new List<TestOutcome>();
+            var testQueue = new Queue<TestCase>(Tests);
+            var processor = new TestProcessor(
+                testQueue, LogCompleted, totalConfigCount);
 
-            // Finally, run all tests.
-            foreach (var testCase in Tests)
+            if (ParallelTaskCount == 1)
             {
-                var exec = new TestExecution(
-                    testCase, LogCompleted, allOutcomes.Count, totalConfigCount);
-                allOutcomes.AddRange(exec.Run());
+                // Run all tests sequentially.
+                processor.Run();
+            }
+            else
+            {
+                // Run all tests in parallel.
+                var tasks = new List<Task>();
+                for (int i = 0; i < ParallelTaskCount; i++)
+                {
+                    tasks.Add(Task.Run(processor.Run));
+                }
+                // Wait for all tasks to complete.
+                Task.WhenAll(tasks).Wait();
             }
 
-            return allOutcomes;
+            return new List<TestOutcome>(processor.Outcomes);
         }
     }
 }

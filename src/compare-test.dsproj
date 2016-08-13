@@ -13,7 +13,6 @@
         <Reference Include="../libs/Flame.dll" />
         <Reference Include="../libs/Flame.Compiler.dll" />
         <Reference Include="../libs/Flame.Front.dll" />
-        <Reference Include="../libs/Flame.Recompilation.dll" />
     </ItemGroup>
     <Compile Include="Ast.ds" />
     <Compile Include="Configuration.ds" />
