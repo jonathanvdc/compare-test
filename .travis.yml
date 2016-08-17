@@ -4,7 +4,7 @@ install:
   - unzip dsc.zip -d bin_dsc
 script:
   # Compile compare-test
-  - bin_dsc/dsc.exe src/compare-test.dsproj -O3 -o src/bin/compare-test.exe
+  - mono bin_dsc/dsc.exe src/compare-test.dsproj -O3 -o src/bin/compare-test.exe
   # Run the tests sequentially
   - mono src/bin/compare-test.exe test/all.test
   # Run the tests concurrently
