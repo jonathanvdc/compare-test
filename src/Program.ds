@@ -38,7 +38,7 @@ namespace CompareTest
             {
                 outcomeIndex++;
                 double percentage = 100.0 * (double)outcomeIndex / (double)TotalOutcomeCount;
-                string percentageStr = (string)(int)percentage;
+                string percentageStr = (string)(int)Math.Round(percentage);
                 while (percentageStr.Length < 3)
                     percentageStr = " " + percentageStr;
                 if (Outcome.HasFailed)
