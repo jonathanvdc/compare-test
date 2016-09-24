@@ -26,6 +26,7 @@ namespace CompareTest
             this.singleCharTokens["|"] = TokenType.Bar;
             this.singleCharTokens[">"] = TokenType.GreaterThan;
             this.singleCharTokens["<"] = TokenType.LessThan;
+            this.singleCharTokens[","] = TokenType.Comma;
 
             this.doubleCharTokens = new Dictionary<string, TokenType>();
             this.doubleCharTokens["|>"] = TokenType.ForwardPipe;

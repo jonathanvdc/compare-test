@@ -77,13 +77,24 @@ namespace CompareTest
         /// <summary>
         /// Parses a command-expression.
         /// </summary>
-        public CommandExpression ParseCommandExpression(TokenBuffer Buffer)
+        public IExpression ParseCommandExpression(TokenBuffer Buffer)
         {
             var atTok = Buffer.ExpectNontrivialToken(TokenType.At, Log);
             var lParen = Buffer.ExpectNontrivialToken(TokenType.LParen, Log);
             var cmd = ParseCommand(Buffer);
-            var rParen = Buffer.ExpectNontrivialToken(TokenType.RParen, Log);
-            return new CommandExpression(atTok, lParen, cmd, rParen);
+            if (Buffer.PeekNontrivialToken().Type == TokenType.Comma)
+            {
+                var comma = Buffer.ExpectNontrivialToken(TokenType.Comma, Log);
+                var exitCode = ParseExpression(Buffer);
+                var rParen = Buffer.ExpectNontrivialToken(TokenType.RParen, Log);
+                return new ExitCheckingCommandExpression(
+                    atTok, lParen, cmd, comma, exitCode, rParen);
+            }
+            else
+            {
+                var rParen = Buffer.ExpectNontrivialToken(TokenType.RParen, Log);
+                return new CommandExpression(atTok, lParen, cmd, rParen);
+            }
         }
 
         /// <summary>

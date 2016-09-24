@@ -1,0 +1,5 @@
+
+run
+{
+    _ = @($(net-runtime) all.test, -1);
+}

@@ -88,7 +88,9 @@ namespace CompareTest
         // '<'
         LessThan = 14,
         // '|>'
-        ForwardPipe = 15
+        ForwardPipe = 15,
+        // ','
+        Comma = 16
     }
 
     /// <summary>
@@ -115,6 +117,7 @@ namespace CompareTest
             tokenNames[TokenType.GreaterThan] = ">";
             tokenNames[TokenType.LessThan] = "<";
             tokenNames[TokenType.ForwardPipe] = "|>";
+            tokenNames[TokenType.Comma] = ",";
         }
 
         private Dictionary<TokenType, string> tokenNames;
@@ -144,7 +147,7 @@ namespace CompareTest
             return Type == TokenType.RBrace || Type == TokenType.RParen
                 || Type == TokenType.Semicolon || Type == TokenType.EndOfFile
                 || Type == TokenType.Bar || Type == TokenType.ForwardPipe
-                || Type == TokenType.GreaterThan;
+                || Type == TokenType.GreaterThan || Type == TokenType.Comma;
         }
 
         /// <summary>
@@ -152,7 +155,8 @@ namespace CompareTest
         /// </summary>
         public bool IsIdentifierHeadChar(char Value)
         {
-            return char.IsLetter(Value);
+            return char.IsLetter(Value)
+                || Value == '_';
         }
 
         /// <summary>
@@ -162,7 +166,8 @@ namespace CompareTest
         {
             return IsIdentifierHeadChar(Value)
                 || char.IsDigit(Value)
-                || Value == '-';
+                || Value == '-'
+                || Value == '_';
         }
     }
 }

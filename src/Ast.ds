@@ -89,15 +89,22 @@ namespace CompareTest
         {
             string input = EvaluateInput(Config, State);
             if (State.HasErrored)
+            {
+                State.FlushErrorMessage();
                 return "";
+            }
 
             string commandStr = ProgramArgs.Evaluate(Config, State);
             if (State.HasErrored)
+            {
+                State.FlushErrorMessage();
                 return "";
+            }
 
             string result = State.RunProcess(commandStr, input);
             if (State.HasErrored)
             {
+                State.FlushErrorMessage();
                 State.Log.LogError(new LogEntry(
                     "external error in '" + commandStr.Trim(null) + "'",
                     result,
@@ -390,6 +397,144 @@ namespace CompareTest
         {
             return AtToken.Contents + LeadingParenthesis.Contents +
                    Command.ToString() + TrailingParenthesis.Contents;
+        }
+    }
+
+    /// <summary>
+    /// An expression that evaluates a command, and returns said command's
+    /// result. Additionally, the command's exit code is compared against
+    /// an expect exit code.
+    /// </summary>
+    public class ExitCheckingCommandExpression : IExpression
+    {
+        public const this(
+            set Token AtToken, set Token LeadingParenthesis,
+            set set ICommand Command, set Token Comma,
+            set IExpression ExpectedExitCode, set Token TrailingParenthesis);
+
+        /// <summary>
+        /// Gets this command expression's leading at sign.
+        /// </summary>
+        public Token AtToken { get; private set; }
+
+        /// <summary>
+        /// Gets this command expression's leading parenthesis token.
+        /// </summary>
+        public Token LeadingParenthesis { get; private set; }
+
+        /// <summary>
+        /// Gets the expression that describes the command this
+        /// statement should execute.
+        /// </summary>
+        public ICommand Command { get; private set; }
+
+        /// <summary>
+        /// Gets the comma token that separates the command from the
+        /// expected exit code.
+        /// </summary>
+        public Token Comma { get; private set; }
+
+        /// <summary>
+        /// Gets the expected exit code token for this command.
+        /// </summary>
+        public IExpression ExpectedExitCode { get; private set; }
+
+        /// <summary>
+        /// Gets this command expression's trailing parenthesis token.
+        /// </summary>
+        public Token TrailingParenthesis { get; private set; }
+
+        /// <summary>
+        /// Gets this test expression's source location.
+        /// </summary>
+        public SourceLocation Location
+        {
+            get
+            {
+                return AtToken.Location
+                    .Concat(LeadingParenthesis.Location)
+                    .Concat(Command.Location)
+                    .Concat(Comma.Location)
+                    .Concat(ExpectedExitCode.Location)
+                    .Concat(TrailingParenthesis.Location);
+            }
+        }
+
+        public string Evaluate(Configuration Config, ExecutionState State)
+        {
+            // Don't log any errors while evaluating the command.
+            var log = State.Log;
+            var silentLog = new SilentLog(log.Options);
+            State.Log = silentLog;
+            bool oldSuppress = State.SuppressErrorMessages;
+            State.SuppressErrorMessages = true;
+            string result = Command.Evaluate(Config, State);
+            string errMessage = State.ErrorMessage;
+            State.SuppressErrorMessages = oldSuppress;
+            State.Log = log;
+            int exitCode = State.ExitCode;
+            // Set the state's exit code to zero while we're evaluating the
+            // expected exit code.
+            State.ExitCode = 0;
+            string exitCodeStr = ExpectedExitCode.Evaluate(Config, State);
+            if (State.ExitCode != 0)
+            {
+                // Something went wrong while evaluating the expected exit
+                // code. Abandon ship.
+                return result;
+            }
+
+            int expectation;
+            if (!int.TryParse(exitCodeStr, &expectation))
+            {
+                // Couldn't parse the exit code as an integer.
+                State.Log.LogError(new LogEntry(
+                    "exit code parsing",
+                    "could not parse expected exit code '" + exitCodeStr +
+                    "' as an integer.",
+                    ExpectedExitCode.Location));
+                State.ExitCode = 1;
+                return result;
+            }
+
+            string logMessage = null;
+            if (expectation < 0)
+            {
+                // We are expecting any non-zero exit code.
+                if (exitCode == 0)
+                {
+                    logMessage = "observed exit code '" + exitCode +
+                        "', but expected a nonzero exit code.";
+                }
+            }
+            else if (exitCode != expectation)
+            {
+                logMessage = "observed exit code '" + exitCode +
+                    "', but expected '" + expectation + "'.";
+            }
+
+            if (logMessage != null)
+            {
+                // Flush the error message.
+                State.ErrorMessage = errMessage;
+                State.FlushErrorMessage();
+                // Show any and all errors that were encountered while
+                // evaluating the command.
+                silentLog.PipeTo(State.Log);
+                // The observed exit code and the expected exit code didn't
+                // match. Bummer.
+                State.Log.LogError(new LogEntry(
+                    "exit code mismatch", logMessage, Location));
+            }
+
+            return result;
+        }
+
+        public override string ToString()
+        {
+            return AtToken.Contents + LeadingParenthesis.Contents +
+                   Command.ToString() + Comma.Contents +
+                   ExpectedExitCode.ToString() + TrailingParenthesis.Contents;
         }
     }
 

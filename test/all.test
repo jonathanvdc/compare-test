@@ -2,6 +2,7 @@
 tests
 {
     autodefine.test;
+    check-exit-code.test;
     compare.test;
     config-names.test;
     cyclic.test;

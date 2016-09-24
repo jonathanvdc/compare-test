@@ -22,6 +22,7 @@ namespace CompareTest
         public const this(set string WorkingDirectory, set ICompilerLog Log)
         {
             this.ExitCode = 0;
+            this.SuppressErrorMessages = false;
         }
 
         /// <summary>
@@ -36,9 +37,9 @@ namespace CompareTest
         public int ExitCode { get; set; }
 
         /// <summary>
-        /// Gets the log that has been associated with this execution state.
+        /// Gets or sets the log for this execution state.
         /// </summary>
-        public ICompilerLog Log { get; private set; }
+        public ICompilerLog Log { get; set; }
 
         /// <summary>
         /// Gets a boolean value that tells whether this state is in an
@@ -47,6 +48,18 @@ namespace CompareTest
         /// execute further processes.
         /// </summary>
         public bool HasErrored { get { return ExitCode != 0; } }
+
+        /// <summary>
+        /// Gets or sets the error message that was printed to standard error
+        /// by the last external program that was run by this state.
+        /// </summary>
+        public string ErrorMessage { get; set; }
+
+        /// <summary>
+        /// Gets or sets a boolean that tells if error message printing should
+        /// be suppressed.
+        /// </summary>
+        public bool SuppressErrorMessages { get; set; }
 
         /// <summary>
         /// Creates a new execution state from this execution state.
@@ -126,11 +139,7 @@ namespace CompareTest
                 if (HasErrored)
                 {
                     // Write output to log for debugging purposes.
-                    string err = process.StandardError.ReadToEnd();
-                    if (!string.IsNullOrWhiteSpace(err))
-                    {
-                        Write(err);
-                    }
+                    ErrorMessage = process.StandardError.ReadToEnd();
                 }
             }
             catch (Win32Exception ex)
@@ -174,6 +183,19 @@ namespace CompareTest
         public void Write(string Message)
         {
             Console.Write(Message);
+        }
+
+        /// <summary>
+        /// Writes the last error message to the console. The error message
+        /// is then discarded.
+        /// </summary>
+        public void FlushErrorMessage()
+        {
+            if (!SuppressErrorMessages && !string.IsNullOrWhiteSpace(ErrorMessage))
+            {
+                Write(ErrorMessage);
+                ErrorMessage = null;
+            }
         }
 
         /// <summary>
