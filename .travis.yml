@@ -1,6 +1,6 @@
 language: csharp
 install:
-  - curl -L https://github.com/jonathanvdc/Flame/releases/download/v0.8.3/dsc.zip > dsc.zip
+  - curl -L https://github.com/jonathanvdc/Flame/releases/download/v0.8.5/dsc.zip > dsc.zip
   - unzip dsc.zip -d bin_dsc
 script:
   # Compile compare-test
