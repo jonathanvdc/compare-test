@@ -525,6 +525,9 @@ namespace CompareTest
                 // match. Bummer.
                 State.Log.LogError(new LogEntry(
                     "exit code mismatch", logMessage, Location));
+                // Set the exit code to one, so as to let the test manager
+                // know that something went wrong.
+                State.ExitCode = 1; 
             }
 
             return result;
