@@ -2,7 +2,6 @@
 <Project Name="compare-test" >
     <Setter Property="TargetPlatform" Value="clr" />
     <Setter Property="AssemblyName" Value="compare-test" />
-    <Option Key="fno-whole-program" Value="true" />
     <Option Key="asm-version" Value="0.1.2" />
     <ItemGroup>
         <RuntimeLibrary Include="PortableRT" />
