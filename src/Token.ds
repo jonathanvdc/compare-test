@@ -90,7 +90,9 @@ namespace CompareTest
         // '|>'
         ForwardPipe = 15,
         // ','
-        Comma = 16
+        Comma = 16,
+        // 'template'
+        TemplateKeyword = 17
     }
 
     /// <summary>
@@ -118,6 +120,7 @@ namespace CompareTest
             tokenNames[TokenType.LessThan] = "<";
             tokenNames[TokenType.ForwardPipe] = "|>";
             tokenNames[TokenType.Comma] = ",";
+            tokenNames[TokenType.TemplateKeyword] = "template";
         }
 
         private Dictionary<TokenType, string> tokenNames;

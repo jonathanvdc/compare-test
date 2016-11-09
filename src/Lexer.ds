@@ -30,6 +30,9 @@ namespace CompareTest
 
             this.doubleCharTokens = new Dictionary<string, TokenType>();
             this.doubleCharTokens["|>"] = TokenType.ForwardPipe;
+
+            this.keywordTokens = new Dictionary<string, TokenType>();
+            this.keywordTokens["template"] = TokenType.TemplateKeyword;
         }
 
         /// <summary>
@@ -49,6 +52,9 @@ namespace CompareTest
 
         // A dictionary that maps double-character strings to their token types.
         private Dictionary<string, TokenType> doubleCharTokens;
+
+        // A dictionary that maps special identifiers to their token types.
+        private Dictionary<string, TokenType> keywordTokens;
 
         /// <summary>
         /// Gets the current position in the source stream.
@@ -105,6 +111,18 @@ namespace CompareTest
             return SliceToken(Type, i - Position);
         }
 
+        private Token ReadIdentifier()
+        {
+            var result = SliceWhile(
+                TokenType.Identifier, TokenHelpers.IsIdentifierTailChar);
+            TokenType ty;
+            if (keywordTokens.TryGetValue(result.Contents, &ty))
+                return new Token(
+                    result.Contents, ty, result.Document, result.Offset);
+            else
+                return result;
+        }
+
         /// <summary>
         /// Reads a single token from the input document. If there are no
         /// more tokens to read, then an end-of-file token is returned.
@@ -124,7 +142,7 @@ namespace CompareTest
             if (PeekString(2) == "//")
                 return SliceWhile(TokenType.Comment, bool(char c) => c != '\n');
             else if (TokenHelpers.IsIdentifierHeadChar(PeekChar()))
-                return SliceWhile(TokenType.Identifier, TokenHelpers.IsIdentifierTailChar);
+                return ReadIdentifier();
             else if (char.IsWhiteSpace(PeekChar()))
                 return SliceWhile(TokenType.Whitespace, char.IsWhiteSpace);
 
