@@ -8,4 +8,5 @@ tests
     cyclic.test;
     globals.test;
     pipe.test;
+    template-def.test;
 }

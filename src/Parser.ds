@@ -154,7 +154,7 @@ namespace CompareTest
             var keyword = Buffer.ExpectNontrivialToken(
                 TokenType.TemplateKeyword, Log);
             var name = Buffer.ExpectNontrivialToken(
-                TokenType.TemplateKeyword, Log);
+                TokenType.Identifier, Log);
             var argList = new List<IExpression>();
             Buffer.ExpectNontrivialToken(
                 TokenType.LessThan, Log);

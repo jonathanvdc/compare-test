@@ -1,0 +1,16 @@
+
+init
+{
+    template PrintLine<text>
+    {
+        init
+        {
+            echo $text;
+        }
+    }
+}
+
+tests
+{
+    template PrintLine<Hi>;
+}

@@ -272,7 +272,7 @@ namespace CompareTest
 
             var synthesizedName = new StringBuilder();
             synthesizedName.Append(BasePath.Name);
-            synthesizedName.Append(".");
+            synthesizedName.Append(":");
             synthesizedName.Append(templateDef.Name);
             synthesizedName.Append("<");
             bool first = true;
