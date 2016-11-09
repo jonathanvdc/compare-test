@@ -527,7 +527,7 @@ namespace CompareTest
                     "exit code mismatch", logMessage, Location));
                 // Set the exit code to one, so as to let the test manager
                 // know that something went wrong.
-                State.ExitCode = 1; 
+                State.ExitCode = 1;
             }
 
             return result;
@@ -685,6 +685,131 @@ namespace CompareTest
         {
             return Identifier.Contents + EqualsToken.Contents +
                    Value.ToString() + Semicolon.Contents;
+        }
+    }
+
+    /// <summary>
+    /// A statement that defines a template.
+    /// </summary>
+    public class TemplateDefinitionStatement : IStatement
+    {
+        public this(
+            set Token TemplateToken, set Token TemplateName,
+            set IReadOnlyList<Token> ParameterNames,
+            set Token OpeningBrace, set Section Contents,
+            set Token ClosingBrace);
+
+        /// <summary>
+        /// Gets the 'template' keyword token.
+        /// </summary>
+        public Token TemplateToken { get; private set; }
+
+        /// <summary>
+        /// Gets the template's name token.
+        /// </summary>
+        public Token TemplateName { get; private set; }
+
+        /// <summary>
+        /// Gets the names of the template's parameters, as identifier tokens.
+        /// </summary>
+        public IReadOnlyList<Token> ParameterNames { get; private set; }
+
+        /// <summary>
+        /// Gets the template body's opening brace.
+        /// </summary>
+        public Token OpeningBrace { get; private set; }
+
+        /// <summary>
+        /// Gets the template body's set of sections.
+        /// </summary>
+        public Section Contents { get; private set; }
+
+        /// <summary>
+        /// Gets the template body's closing brace.
+        /// </summary>
+        public Token ClosingBrace { get; private set; }
+
+        /// <summary>
+        /// Gets this template statement's source location.
+        /// </summary>
+        public SourceLocation Location
+        {
+            get
+            {
+                return TemplateToken.Location
+                    .Concat(TemplateName.Location);
+            }
+        }
+
+        /*
+         * Gets the template that is defined by this statement.
+         */
+        public Template Template
+        {
+            get
+            {
+                var paramNames = new List<string>();
+                foreach (var tok in ParameterNames)
+                    paramNames.Add(tok.Contents);
+                return new Template(
+                    TemplateName.Contents, paramNames,
+                    Contents);
+            }
+        }
+
+        public Configuration Execute(Configuration Config, ExecutionState State)
+        {
+            return Config.WithTemplate(Template);
+        }
+    }
+
+    /// <summary>
+    /// A statement that instantiates a template. This type of statement
+    /// can only appear in a 'tests' section.
+    /// </summary>
+    public class TemplateInstantiationStatement : IStatement
+    {
+        public this(
+            set Token TemplateToken, set Token TemplateName,
+            set IReadOnlyList<IExpression> Arguments);
+
+        /// <summary>
+        /// Gets the 'template' keyword token.
+        /// </summary>
+        public Token TemplateToken { get; private set; }
+
+        /// <summary>
+        /// Gets the template's name token.
+        /// </summary>
+        public Token TemplateName { get; private set; }
+
+        /// <summary>
+        /// Gets the names of the template's argument expressions.
+        /// </summary>
+        public IReadOnlyList<IExpression> Arguments { get; private set; }
+
+        /// <summary>
+        /// Gets this template statement's source location.
+        /// </summary>
+        public SourceLocation Location
+        {
+            get
+            {
+                return TemplateToken.Location
+                    .Concat(TemplateName.Location);
+            }
+        }
+
+        public Configuration Execute(Configuration Config, ExecutionState State)
+        {
+            State.Log.LogError(new LogEntry(
+                "syntax error",
+                "template instantiations can only appear in top-level 'test' sections",
+                Location));
+            // Set the exit code to one, so as to let the test manager
+            // know that something went wrong.
+            State.ExitCode = 1;
+            return Config;
         }
     }
 

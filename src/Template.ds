@@ -1,0 +1,32 @@
+using System;
+using System.Collections.Generic;
+using System.Text;
+
+namespace CompareTest
+{
+    /// <summary>
+    /// Represents a template definition.
+    /// </summary>
+    public class Template
+    {
+        public this(
+            set string Name, set IReadOnlyList<string> ParameterNames,
+            set Section Contents);
+
+        /// <summary>
+        /// Gets this template's name.
+        /// </summary>
+        public string Name { get; private set; }
+
+        /// <summary>
+        /// Gets the list of parameter names for this template.
+        /// </summary>
+        public IReadOnlyList<string> ParameterNames { get; private set; }
+
+        /// <summary>
+        /// Gets the pseudo-section that represents this template's root
+        /// section.
+        /// </summary>
+        public Section Contents { get; private set; }
+    }
+}
