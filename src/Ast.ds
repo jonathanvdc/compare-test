@@ -695,7 +695,7 @@ namespace CompareTest
     {
         public this(
             set Token TemplateToken, set Token TemplateName,
-            set IReadOnlyList<Token> ParameterNames,
+            set IReadOnlyList<IExpression> Parameters,
             set Token OpeningBrace, set Section Contents,
             set Token ClosingBrace);
 
@@ -710,9 +710,9 @@ namespace CompareTest
         public Token TemplateName { get; private set; }
 
         /// <summary>
-        /// Gets the names of the template's parameters, as identifier tokens.
+        /// Gets the names of the template's parameters, as expressions.
         /// </summary>
-        public IReadOnlyList<Token> ParameterNames { get; private set; }
+        public IReadOnlyList<IExpression> Parameters { get; private set; }
 
         /// <summary>
         /// Gets the template body's opening brace.
@@ -744,22 +744,19 @@ namespace CompareTest
         /*
          * Gets the template that is defined by this statement.
          */
-        public Template Template
+        public Template GetTemplate(Configuration Config, ExecutionState State)
         {
-            get
-            {
-                var paramNames = new List<string>();
-                foreach (var tok in ParameterNames)
-                    paramNames.Add(tok.Contents);
-                return new Template(
-                    TemplateName.Contents, paramNames,
-                    Contents);
-            }
+            var paramNames = new List<string>();
+            foreach (var expr in Parameters)
+                paramNames.Add(expr.Evaluate(Config, State));
+            return new Template(
+                TemplateName.Contents, paramNames,
+                Contents);
         }
 
         public Configuration Execute(Configuration Config, ExecutionState State)
         {
-            return Config.WithTemplate(Template);
+            return Config.WithTemplate(GetTemplate(Config, State));
         }
     }
 

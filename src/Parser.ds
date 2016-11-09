@@ -113,6 +113,10 @@ namespace CompareTest
                 Buffer.ExpectNontrivialToken(TokenType.Semicolon, Log);
                 return EmptyStatement;
             }
+            else if (peek.Type == TokenType.TemplateKeyword)
+            {
+                return ParseTemplateStatement(Buffer);
+            }
             else
             {
                 return ParseCommandStatement(Buffer);
@@ -139,6 +143,44 @@ namespace CompareTest
             var cmd = ParseCommand(Buffer);
             var semicolon = Buffer.ExpectNontrivialToken(TokenType.Semicolon, Log);
             return new CommandStatement(cmd, semicolon);
+        }
+
+        /// <summary>
+        /// Parses a statement that is either a template definition or a
+        /// template instance.
+        /// </summary>
+        public IStatement ParseTemplateStatement(TokenBuffer Buffer)
+        {
+            var keyword = Buffer.ExpectNontrivialToken(
+                TokenType.TemplateKeyword, Log);
+            var name = Buffer.ExpectNontrivialToken(
+                TokenType.TemplateKeyword, Log);
+            var argList = new List<IExpression>();
+            Buffer.ExpectNontrivialToken(
+                TokenType.LessThan, Log);
+            while (true)
+            {
+                argList.Add(ParseExpression(Buffer));
+
+                if (Buffer.PeekNontrivialToken().Type == TokenType.Comma)
+                    Buffer.ExpectNontrivialToken(TokenType.Comma, Log);
+                else
+                    break;
+            }
+            Buffer.ExpectNontrivialToken(
+                TokenType.GreaterThan, Log);
+
+            if (Buffer.PeekNontrivialToken().Type == TokenType.Semicolon)
+            {
+                Buffer.ExpectNontrivialToken(TokenType.Semicolon, Log);
+                return new TemplateInstantiationStatement(keyword, name, argList);
+            }
+
+            var lBRace = Buffer.ExpectNontrivialToken(TokenType.LBrace, Log);
+            var sec = ParseSectionContents(name, Buffer);
+            var rBrace = Buffer.ExpectNontrivialToken(TokenType.RBrace, Log);
+            return new TemplateDefinitionStatement(
+                keyword, name, argList, lBRace, sec, rBrace);
         }
 
         /// <summary>
