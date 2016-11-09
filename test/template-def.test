@@ -3,7 +3,13 @@ init
 {
     template PrintLine<text>
     {
-        init
+        configs
+        {
+            A { text = $text from A; }
+            B { text = $text from B; }
+        }
+
+        run
         {
             echo $text;
         }
