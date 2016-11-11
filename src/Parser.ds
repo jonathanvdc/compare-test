@@ -160,6 +160,7 @@ namespace CompareTest
                 TokenType.LessThan, Log);
             while (true)
             {
+                Buffer.SkipTrivia();
                 argList.Add(ParseExpression(Buffer));
 
                 if (Buffer.PeekNontrivialToken().Type == TokenType.Comma)

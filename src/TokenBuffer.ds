@@ -120,6 +120,15 @@ namespace CompareTest
         }
 
         /// <summary>
+        /// Skips all trivia tokens, until a nontrivial token is encountered.
+        /// </summary>
+        public void SkipTrivia()
+        {
+            while (TokenHelpers.IsTrivia(PeekToken().Type))
+                ReadToken();
+        }
+
+        /// <summary>
         /// Reads a nontrivial token from the token buffer. If there are no
         /// more nontrivial tokens to read, then an end-of-file token is returned.
         /// </summary>
