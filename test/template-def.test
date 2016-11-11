@@ -11,7 +11,21 @@ init
 
         run
         {
-            echo $text;
+            $echo $text;
+        }
+    }
+
+    template PrintLine2<a, b>
+    {
+        configs
+        {
+            A { text = $a from A; }
+            B { text = $b from B; }
+        }
+
+        run
+        {
+            $echo $text;
         }
     }
 }
@@ -19,4 +33,5 @@ init
 tests
 {
     template PrintLine<Hi>;
+    template PrintLine2<hi, there>;
 }
