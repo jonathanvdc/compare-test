@@ -1,12 +1,41 @@
-version: 0.1.2.{build}
+version: 0.1.3.{build}
 
 install:
+  - set VERNUM=0.1.3
   - curl -L https://github.com/jonathanvdc/Flame/releases/download/v0.8.5/dsc.zip > dsc.zip
   - 7z x dsc.zip -obin_dsc
+
 build_script:
   # Compile compare-test
   - bin_dsc\dsc.exe src\compare-test.dsproj -O3 -o src\bin\compare-test.exe
+
+after_build:
+  # Zip the compiled compare-test binaries, and upload them.
+  - mkdir bin
+  - xcopy src\bin\*.dll bin
+  - xcopy src\bin\*.exe bin
+  - 7z a compare-test.zip %APPVEYOR_BUILD_FOLDER%\bin\*
+
+test_script:
   # Run the tests sequentially
   - src\bin\compare-test.exe test\all.test
-  # Run the tests concurrently
+  # Run the tests in parallel
   - src\bin\compare-test.exe test\all.test -j
+
+artifacts:
+  - path: compare-test.zip
+    name: compare-test
+
+deploy:
+  - provider: GitHub
+    release: compare-test v$(VERNUM)
+    tag: $(APPVEYOR_REPO_TAG_NAME)
+    description: 'Release description' # Fill this out later.
+    auth_token:
+      secure: 693ZX2DdyyjDOqpJaJlUMO1hcMtLbsqMnCLzQVUEq7JjGb+bfEbaB/oMO0b26KZo
+    artifact: compare-test.zip # Release the compare-test binaries as an artifact.
+    draft: true # Make this a draft.
+    prerelease: false
+    on:
+      branch: master # Release from master branch only.
+      appveyor_repo_tag: true # Deploy on tag push only.
