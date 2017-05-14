@@ -94,6 +94,11 @@ namespace CompareTest
         public const string BuiltinCat = "builtin-cat";
 
         /// <summary>
+        /// The name of compare-test's built-in mkdir command.
+        /// </summary>
+        public const string BuiltinMkdir = "builtin-mkdir";
+
+        /// <summary>
         /// Runs a process with the given name and arguments, waits for
         /// completion, and then returns its output.
         /// </summary>
@@ -107,6 +112,10 @@ namespace CompareTest
             if (Name == BuiltinCat)
             {
                 return RunBuiltinCat(Arguments, Input);
+            }
+            else if (Name == BuiltinMkdir)
+            {
+                return RunBuiltinMkdir(Arguments, Input);
             }
 
             string fixedName;
@@ -308,6 +317,23 @@ namespace CompareTest
         }
 
         /// <summary>
+        /// Creates the directory with the given name.
+        /// </summary>
+        public void CreateDirectory(string Path)
+        {
+            string locPath = GetLocalPath(Path);
+            try
+            {
+                Directory.CreateDirectory(locPath);
+            }
+            catch (Exception ex)
+            {
+                ErrorMessage = ex.Message;
+                ExitCode = 1;
+            }
+        }
+
+        /// <summary>
         /// Runs the built-in cat command with the given arguments and input.
         /// </summary>
         /// <param name="Arguments">The files to read.</param>
@@ -329,6 +355,24 @@ namespace CompareTest
                 }
             }
             return result.ToString();
+        }
+
+        /// <summary>
+        /// Runs the built-in mkdir command with the given arguments and input.
+        /// </summary>
+        /// <param name="Arguments">The directories to create.</param>
+        /// <param name="Input">Piped input.</param>
+        private string RunBuiltinMkdir(string Arguments, string Input)
+        {
+            foreach (var path in SplitArgs(Arguments))
+            {
+                CreateDirectory(path);
+                if (HasErrored)
+                {
+                    break;
+                }
+            }
+            return "";
         }
 
         private IReadOnlyList<string> SplitArgs(string ArgumentString)
