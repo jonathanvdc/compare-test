@@ -1,7 +1,7 @@
 version: 0.1.2.{build}
 
 install:
-  - wget https://github.com/jonathanvdc/Flame/releases/download/v0.8.5/dsc.zip
+  - curl -L https://github.com/jonathanvdc/Flame/releases/download/v0.8.5/dsc.zip > dsc.zip
   - 7z x dsc.zip -obin_dsc
 build_script:
   # Compile compare-test
