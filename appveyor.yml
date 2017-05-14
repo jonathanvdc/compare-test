@@ -1,7 +1,7 @@
-version: 0.1.3.{build}
+version: 0.1.4.{build}
 
 install:
-  - set VERNUM=0.1.3
+  - set VERNUM=0.1.4
   - curl -L https://github.com/jonathanvdc/Flame/releases/download/v0.8.5/dsc.zip > dsc.zip
   - 7z x dsc.zip -obin_dsc
 
