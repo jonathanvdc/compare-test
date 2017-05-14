@@ -1,0 +1,40 @@
+using System;
+using System.Collections.Generic;
+using Flame.Compiler;
+using Flame.Front;
+using Flame.Front.Cli;
+using Flame.Front.Options;
+using Pixie;
+
+namespace CompareTest
+{
+    /// <summary>
+    /// Describes a test case's name and path.
+    /// </summary>
+    public struct TestCaseName
+    {
+        public this(PathIdentifier Path)
+        {
+            this.Path = Path;
+            this.Name = Path.ToString();
+        }
+
+        public this(PathIdentifier Path, string Name)
+        {
+            this.Path = Path;
+            this.Name = Name;
+        }
+
+        /// <summary>
+        /// Gets a path to the file that defines this test case.
+        /// </summary>
+        /// <returns>A path to the file that defines this test case.</returns>
+        public PathIdentifier Path { get; private set; }
+
+        /// <summary>
+        /// Gets this test case's name, which may or may not be the same as its path.
+        /// </summary>
+        /// <returns>This test case's name.</returns>
+        public string Name { get; private set; }
+    }
+}

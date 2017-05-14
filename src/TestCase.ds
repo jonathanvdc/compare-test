@@ -91,16 +91,16 @@ namespace CompareTest
         public const string ResultKey = "return";
 
         public this(
-            set PathIdentifier Path, set Section Root,
+            set TestCaseName Name, set Section Root,
             set Configuration InitialConfiguration, set ExecutionState State)
         {
             this.Configurations = GetConfigurations();
         }
 
         /// <summary>
-        /// Gets this test case's path.
+        /// Gets this test case's name and path.
         /// </summary>
-        public PathIdentifier Path { get; private set; }
+        public TestCaseName Name { get; private set; }
 
         /// <summary>
         /// Gets the root section for this test case.
@@ -203,7 +203,7 @@ namespace CompareTest
                 }
 
                 var configOutcome = new TestOutcome(
-                    Path, config, configState.HasErrored);
+                    Name, config, configState.HasErrored);
                 LogCompleted(configOutcome, TotalConfigCount);
                 outcomes.Add(configOutcome);
             }

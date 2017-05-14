@@ -24,6 +24,7 @@
     <Compile Include="SyntaxException.ds" />
     <Compile Include="Template.ds" />
     <Compile Include="TestCase.ds" />
+    <Compile Include="TestCaseName.ds" />
     <Compile Include="TestManager.ds" />
     <Compile Include="Token.ds" />
     <Compile Include="TokenBuffer.ds" />

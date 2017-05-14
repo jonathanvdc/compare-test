@@ -18,13 +18,13 @@ namespace CompareTest
     public class TestOutcome
     {
         public const this(
-            set PathIdentifier Path, set Configuration Config,
+            set TestCaseName Name, set Configuration Config,
             set bool HasFailed);
 
         /// <summary>
-        /// Gets the test's path.
+        /// Gets the test's name and path.
         /// </summary>
-        public PathIdentifier Path { get; private set; }
+        public TestCaseName Name { get; private set; }
 
         /// <summary>
         /// Gets the test's configuration.

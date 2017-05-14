@@ -46,7 +46,7 @@ namespace CompareTest
                 else
                     Log.Console.Write("[" + percentageStr + "%]", Log.MessageStyle);
                 Log.Console.Write(" ");
-                Log.Console.Write(Outcome.Path.Path, Log.ContrastForegroundColor);
+                Log.Console.Write(Outcome.Name.Name, Log.ContrastForegroundColor);
                 Log.Console.Write(" - ");
                 Log.Console.Write(Outcome.Config.Name);
                 Log.Console.WriteLine();
@@ -287,13 +287,12 @@ namespace CompareTest
             }
             synthesizedName.Append(">");
 
-            var synthesizedPath = new PathIdentifier(
-                BasePath.Parent, synthesizedName.ToString());
+            var templateName = new TestCaseName(BasePath, synthesizedName.ToString());
             var newConfig = Config.CreateSubconfiguration(
                 Config.Name, argMapping);
 
             ReadTestsRecursive(
-                synthesizedPath, templateDef.Contents, Log,
+                templateName, templateDef.Contents, Log,
                 newConfig, State, Results, ParsedPaths);
         }
 
@@ -340,13 +339,13 @@ namespace CompareTest
         /// been parsed, and is given.
         /// </summary>
         private void ReadTestsRecursive(
-            PathIdentifier Path, Section TestDescription,
+            TestCaseName Name, Section TestDescription,
             ICompilerLog Log, Configuration Config,
             ExecutionState State, List<TestCase> Results,
             HashSet<string> ParsedPaths)
         {
             // Fork the parent execution state.
-            var secState = State.Fork(Path.AbsolutePath.Parent.Path);
+            var secState = State.Fork(Name.Path.AbsolutePath.Parent.Path);
             // Run the 'init' section first.
             var secInitStmt = TestDescription.GetOptionalStatementSection(
                 TestCase.InitializationSectionName);
@@ -356,7 +355,7 @@ namespace CompareTest
 
             // Create a section tuple for this section, and add it to the
             // results dictionary.
-            Results.Add(new TestCase(Path, TestDescription, secConfig, secState));
+            Results.Add(new TestCase(Name, TestDescription, secConfig, secState));
 
             // Then try to find subtests in the 'tests' section.
             if (TestDescription.Sections.TryGetValue(TestCase.TestsSectionName, &Section subtests))
@@ -366,7 +365,7 @@ namespace CompareTest
                     // Parse all subtest "command statements"
                     ReadSubtest(
                         item, Log, secConfig, secState,
-                        Path, Results, ParsedPaths);
+                        Name.Path, Results, ParsedPaths);
                 }
             }
         }
@@ -393,7 +392,13 @@ namespace CompareTest
                 return;
 
             return ReadTestsRecursive(
-                Path, sec, Log, Config, State, Results, ParsedPaths);
+                new TestCaseName(Path),
+                sec,
+                Log,
+                Config,
+                State,
+                Results,
+                ParsedPaths);
         }
 
         /// <summary>
