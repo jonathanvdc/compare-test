@@ -90,7 +90,7 @@ namespace CompareTest
             {
                 // No need to explicitly name the runtime on Windows.
                 configOptions[NetRuntimeKey] = "";
-                configOptions[ReadFileKey] = "cmd.exe /u /c type";
+                configOptions[ReadFileKey] = ExecutionState.BuiltinCat;
                 configOptions[MakeDirectoryRecursiveKey] = "mkdir";
             }
             else

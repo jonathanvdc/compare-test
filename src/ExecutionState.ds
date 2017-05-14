@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
@@ -88,6 +89,11 @@ namespace CompareTest
         }
 
         /// <summary>
+        /// The name of compare-test's built-in cat command.
+        /// </summary>
+        public const string BuiltinCat = "builtin-cat";
+
+        /// <summary>
         /// Runs a process with the given name and arguments, waits for
         /// completion, and then returns its output.
         /// </summary>
@@ -97,6 +103,11 @@ namespace CompareTest
                 throw new InvalidOperationException(
                     "Cannot start a process if a previously executed " +
                     "process did not terminate successfully.");
+
+            if (Name == BuiltinCat)
+            {
+                return RunBuiltinCat(Arguments, Input);
+            }
 
             string fixedName;
             if (Name.IndexOf(Path.DirectorySeparatorChar) >= 0 ||
@@ -199,6 +210,41 @@ namespace CompareTest
         }
 
         /// <summary>
+        /// Reads a file at the given path and returns its contents.
+        /// </summary>
+        public string ReadFile(string Path)
+        {
+            string locPath = GetLocalPath(Path);
+            string result = "";
+            try
+            {
+                result = File.ReadAllText(locPath);
+            }
+            catch (FileNotFoundException ex)
+            {
+                ErrorMessage = "file not found: '" + locPath + "' does not exist.";
+                ExitCode = 1;
+            }
+            catch (SecurityException ex)
+            {
+                ErrorMessage = "did not have permission to access '" + locPath + "'.";
+                ExitCode = 1;
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                ErrorMessage = "did not have read-access to '" + locPath + "'.";
+                ExitCode = 1;
+            }
+            catch (PathTooLongException ex)
+            {
+                ErrorMessage = "path '" + locPath + "' is too long for the OS to handle.";
+                ExitCode = 1;
+            }
+
+            return result;
+        }
+
+        /// <summary>
         /// Creates a file at the given path with the given contents.
         /// A source location specifies the responsible code fragment if
         /// anything goes wrong.
@@ -207,13 +253,13 @@ namespace CompareTest
         {
             string locPath = GetLocalPath(Path);
 
+            FileStream fs = null;
+            StreamWriter reader = null;
             try
             {
-                var fs = new FileStream(locPath, FileMode.Create, FileAccess.Write);
-                var reader = new StreamWriter(fs);
+                fs = new FileStream(locPath, FileMode.Create, FileAccess.Write);
+                reader = new StreamWriter(fs);
                 reader.Write(Contents);
-                reader.Dispose();
-                fs.Dispose();
             }
             catch (DirectoryNotFoundException ex)
             {
@@ -248,6 +294,79 @@ namespace CompareTest
                     Location));
                 ExitCode = 1;
             }
+            finally
+            {
+                if (reader != null)
+                {
+                    reader.Dispose();
+                }
+                if (fs != null)
+                {
+                    fs.Dispose();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Runs the built-in cat command with the given arguments and input.
+        /// </summary>
+        /// <param name="Arguments">The files to read.</param>
+        /// <param name="Input">Piped input.</param>
+        private string RunBuiltinCat(string Arguments, string Input)
+        {
+            if (Arguments.Length == 0)
+            {
+                return Input;
+            }
+
+            var result = new StringBuilder();
+            foreach (var path in SplitArgs(Arguments))
+            {
+                result.Append(ReadFile(path));
+                if (HasErrored)
+                {
+                    break;
+                }
+            }
+            return result.ToString();
+        }
+
+        private IReadOnlyList<string> SplitArgs(string ArgumentString)
+        {
+            var results = new List<string>();
+            var accumulated = new StringBuilder();
+            bool inQuotes = false;
+            for (int i = 0; i < ArgumentString.Length; i++)
+            {
+                var c = ArgumentString[i];
+                if (c == '\\')
+                {
+                    // Skip the backslash and the character that trails it.
+                    accumulated.Append(c);
+                    i++;
+                    c = ArgumentString[i];
+                }
+                else if (c == '"')
+                {
+                    inQuotes = !inQuotes;
+                }
+                else if (!inQuotes && char.IsWhiteSpace(c))
+                {
+                    string arg = accumulated.ToString();
+                    if (!string.IsNullOrWhiteSpace(arg))
+                    {
+                        results.Add(arg);
+                    }
+                    accumulated.Clear();
+                }
+                accumulated.Append(c);
+            }
+            string lastArg = accumulated.ToString();
+            if (!string.IsNullOrWhiteSpace(lastArg))
+            {
+                results.Add(lastArg);
+            }
+            return results;
         }
     }
 }
