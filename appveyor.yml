@@ -1,0 +1,12 @@
+version: 0.1.2.{build}
+
+install:
+  - wget https://github.com/jonathanvdc/Flame/releases/download/v0.8.5/dsc.zip
+  - 7z x dsc.zip -obin_dsc
+build_script:
+  # Compile compare-test
+  - bin_dsc\dsc.exe src\compare-test.dsproj -O3 -o src\bin\compare-test.exe
+  # Run the tests sequentially
+  - src\bin\compare-test.exe test\all.test
+  # Run the tests concurrently
+  - src\bin\compare-test.exe test\all.test -j
