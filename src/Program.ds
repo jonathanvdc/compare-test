@@ -271,7 +271,7 @@ namespace CompareTest
             }
 
             var synthesizedName = new StringBuilder();
-            synthesizedName.Append(BasePath.Name);
+            synthesizedName.Append(BasePath.ToString());
             synthesizedName.Append(":");
             synthesizedName.Append(templateDef.Name);
             synthesizedName.Append("<");
