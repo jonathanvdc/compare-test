@@ -2,7 +2,7 @@
 <Project Name="compare-test" >
     <Setter Property="TargetPlatform" Value="clr" />
     <Setter Property="AssemblyName" Value="compare-test" />
-    <Option Key="asm-version" Value="0.1.4" />
+    <Option Key="asm-version" Value="0.1.5" />
     <ItemGroup>
         <RuntimeLibrary Include="PortableRT" />
         <RuntimeLibrary Include="System" />
