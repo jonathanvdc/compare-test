@@ -1,0 +1,12 @@
+
+run
+{
+    $echo hi > $filename;
+    return = @($cat $filename);
+}
+
+configs
+{
+    first { filename = @($create-temp-file txt); }
+    second { filename = @($create-temp-file txt); }
+}

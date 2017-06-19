@@ -69,6 +69,7 @@ namespace CompareTest
         public const string NetRuntimeKey = "net-runtime";
         public const string ReadFileKey = "cat";
         public const string MakeDirectoryRecursiveKey = "mkdir-rec";
+        public const string CreateTempFileKey = "create-temp-file";
 
         private string GetPlatformName()
         {
@@ -100,6 +101,7 @@ namespace CompareTest
                 configOptions[ReadFileKey] = "cat";
                 configOptions[MakeDirectoryRecursiveKey] = "mkdir -p";
             }
+            configOptions[CreateTempFileKey] = ExecutionState.BuiltinCreateTempFile;
             configOptions[TestCase.WorkingDirectoryKey] = Environment.CurrentDirectory;
             foreach (var key in Args.Options)
             {
@@ -126,45 +128,55 @@ namespace CompareTest
 
             var config = GetDefaultConfiguration(options);
 
-            var allTests = ReadAllTests(options.SourcePaths, filtLog, config);
-
-            // Get the number of parallel tasks to use.
-            int taskCount = options.GetOption<int>("j", 1);
-            if (taskCount <= 0)
-                taskCount = Environment.ProcessorCount;
-
-            var manager = new TestManager(allTests, CreatePercentageLogger(log), taskCount);
-            var outcomes = manager.RunTests();
-            var failures = FilterFailures(outcomes);
-            log.Console.Write("Ran ");
-            log.Console.Write(ToCountString(outcomes.Count, "test configuration"), log.ContrastForegroundColor);
-
-            int exitCode = 0;
-            if (failures.Count == 0)
+            ExecutionState state;
+            try
             {
-                log.Console.Write(", all of which were ");
-                log.Console.Write("successful", log.MessageStyle);
-                log.Console.Write(".");
-                log.Console.WriteLine();
-                if (filtLog.ErrorCount > 0)
+                state = new ExecutionState(
+                    config.Variables[TestCase.WorkingDirectoryKey], filtLog);
+                var allTests = ReadAllTests(options.SourcePaths, filtLog, config, state);
+
+                // Get the number of parallel tasks to use.
+                int taskCount = options.GetOption<int>("j", 1);
+                if (taskCount <= 0)
+                    taskCount = Environment.ProcessorCount;
+
+                var manager = new TestManager(allTests, CreatePercentageLogger(log), taskCount);
+                var outcomes = manager.RunTests();
+                var failures = FilterFailures(outcomes);
+                log.Console.Write("Ran ");
+                log.Console.Write(ToCountString(outcomes.Count, "test configuration"), log.ContrastForegroundColor);
+
+                int exitCode = 0;
+                if (failures.Count == 0)
                 {
-                    log.Console.Write("Encountered some ");
-                    log.Console.Write("internal errors", log.ErrorStyle);
-                    log.Console.Write(" on the way, though.");
+                    log.Console.Write(", all of which were ");
+                    log.Console.Write("successful", log.MessageStyle);
+                    log.Console.Write(".");
+                    log.Console.WriteLine();
+                    if (filtLog.ErrorCount > 0)
+                    {
+                        log.Console.Write("Encountered some ");
+                        log.Console.Write("internal errors", log.ErrorStyle);
+                        log.Console.Write(" on the way, though.");
+                        log.Console.WriteLine();
+                        exitCode = 1;
+                    }
+                }
+                else
+                {
+                    log.Console.Write(". Found ");
+                    log.Console.Write(ToCountString(failures.Count, "failure"), log.ErrorStyle)
+                    log.Console.Write(".");
                     log.Console.WriteLine();
                     exitCode = 1;
                 }
-            }
-            else
-            {
-                log.Console.Write(". Found ");
-                log.Console.Write(ToCountString(failures.Count, "failure"), log.ErrorStyle)
-                log.Console.Write(".");
-                log.Console.WriteLine();
-                exitCode = 1;
-            }
 
-            Environment.ExitCode = exitCode;
+                Environment.ExitCode = exitCode;
+            }
+            finally
+            {
+                state.Dispose();
+            }
         }
 
         private string ToCountString(int Count, string Type)
@@ -409,15 +421,13 @@ namespace CompareTest
         /// </summary>
         public IReadOnlyList<TestCase> ReadAllTests(
             [PathIdentifier] Paths, ICompilerLog Log,
-            Configuration Config)
+            Configuration Config, ExecutionState RootExecutionState)
         {
             var results = new List<TestCase>();
             var visitedPaths = new HashSet<string>();
-            var state = new ExecutionState(
-                Config.Variables[TestCase.WorkingDirectoryKey], Log);
             foreach (var item in Paths)
             {
-                ReadTestsRecursive(item, Log, Config, state, results, visitedPaths);
+                ReadTestsRecursive(item, Log, Config, RootExecutionState, results, visitedPaths);
             }
             return results;
         }

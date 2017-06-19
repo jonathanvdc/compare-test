@@ -5,6 +5,7 @@ tests
     check-exit-code.test;
     compare.test;
     config-names.test;
+    create-temp-file.test;
     cyclic.test;
     globals.test;
     pipe.test;

@@ -14,16 +14,26 @@ namespace CompareTest
     /// A mutable state structure that can be used by statements to start
     /// processes and check for errors.
     /// </summary>
-    public class ExecutionState
+    public class ExecutionState : IDisposable
     {
-        public const this(
+        private this(
             set string WorkingDirectory, set ICompilerLog Log,
-            set int ExitCode);
+            set int ExitCode, set List<string> tempFiles)
+        {
+        }
 
-        public const this(set string WorkingDirectory, set ICompilerLog Log)
+        public this(
+            set string WorkingDirectory, set ICompilerLog Log,
+            set int ExitCode)
+        {
+            this.tempFiles = new List<string>();
+        }
+
+        public this(set string WorkingDirectory, set ICompilerLog Log)
         {
             this.ExitCode = 0;
             this.SuppressErrorMessages = false;
+            this.tempFiles = new List<string>();
         }
 
         /// <summary>
@@ -62,6 +72,19 @@ namespace CompareTest
         /// </summary>
         public bool SuppressErrorMessages { get; set; }
 
+        // The list of temporary file names, shared by execution states.
+        private List<string> tempFiles;
+
+        /// <summary>
+        /// Gets a sequence of paths to all temporary files created by this
+        /// execution state and its parent/children.
+        /// </summary>
+        /// <returns>Paths to temporary files.</returns>
+        public IEnumerable<string> TemporaryFilePaths
+        {
+            get { return tempFiles; }
+        }
+
         /// <summary>
         /// Creates a new execution state from this execution state.
         /// </summary>
@@ -76,7 +99,7 @@ namespace CompareTest
         /// </summary>
         public ExecutionState Fork(string NewWorkingDirectory)
         {
-            return new ExecutionState(NewWorkingDirectory, Log, ExitCode);
+            return new ExecutionState(NewWorkingDirectory, Log, ExitCode, tempFiles);
         }
 
         /// <summary>
@@ -89,6 +112,21 @@ namespace CompareTest
         }
 
         /// <summary>
+        /// Releases all resources acquired by this execution state, its
+        /// parent and its children.
+        /// </summary>
+        public void Dispose()
+        {
+            foreach (var path in tempFiles)
+            {
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                }
+            }
+        }
+
+        /// <summary>
         /// The name of compare-test's built-in cat command.
         /// </summary>
         public const string BuiltinCat = "builtin-cat";
@@ -97,6 +135,11 @@ namespace CompareTest
         /// The name of compare-test's built-in mkdir command.
         /// </summary>
         public const string BuiltinMkdir = "builtin-mkdir";
+
+        /// <summary>
+        /// The name of compare-test's built-in temp file creation command.
+        /// </summary>
+        public const string BuiltinCreateTempFile = "builtin-create-temp-file";
 
         /// <summary>
         /// Runs a process with the given name and arguments, waits for
@@ -116,6 +159,10 @@ namespace CompareTest
             else if (Name == BuiltinMkdir)
             {
                 return RunBuiltinMkdir(Arguments, Input);
+            }
+            else if (Name == BuiltinCreateTempFile)
+            {
+                return RunBuiltinCreateTempFile(Arguments);
             }
 
             string fixedName;
@@ -373,6 +420,18 @@ namespace CompareTest
                 }
             }
             return "";
+        }
+
+        /// <summary>
+        /// Runs the built-in random-filename command with the given arguments and input.
+        /// </summary>
+        /// <param name="Extension">The extension of the file to create.</param>
+        private string RunBuiltinCreateTempFile(string Extension)
+        {
+            var filePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + "." + Extension);
+            tempFiles.Add(filePath);
+            File.Create(filePath).Dispose();
+            return filePath;
         }
 
         private IReadOnlyList<string> SplitArgs(string ArgumentString)
