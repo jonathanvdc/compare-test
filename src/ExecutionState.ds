@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
+using System.Threading;
 using System.IO;
 using System.Security;
 using Flame.Compiler;
@@ -429,7 +430,15 @@ namespace CompareTest
         private string RunBuiltinCreateTempFile(string Extension)
         {
             var filePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + "." + Extension);
-            tempFiles.Add(filePath);
+            try
+            {
+                Monitor.Enter(tempFiles);
+                tempFiles.Add(filePath);
+            }
+            finally
+            {
+                Monitor.Exit(tempFiles);
+            }
             File.Create(filePath).Dispose();
             return filePath;
         }
